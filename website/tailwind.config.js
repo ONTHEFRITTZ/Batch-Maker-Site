@@ -7,26 +7,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bakery: {
-          bg: "#FAF9F7",
-          card: "#FFFFFF",
-          ink: "#1F2937",
-          muted: "#6B7280",
-          accent: "#7C9A8E",
-          accentSoft: "#E6EFEA",
+        sage: {
+          50: '#f6f8f7',
+          100: '#e3e9e5',
+          200: '#c7d3cb',
+          300: '#a8c5b5',
+          400: '#8fb5a0',
+          500: '#72a089',
+          600: '#5c8571',
+          700: '#4a6a5c',
+          800: '#3e584c',
+          900: '#354a40',
         },
-      },
-      borderRadius: {
-        xl: "1rem",
-        "2xl": "1.5rem",
-      },
-      boxShadow: {
-        soft: "0 10px 30px rgba(0,0,0,0.06)",
       },
     },
   },
- plugins: [
-  require("@tailwindcss/typography"),
-],
-
+  plugins: [],
 }
