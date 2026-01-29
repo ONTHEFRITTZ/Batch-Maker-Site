@@ -1,21 +1,18 @@
-// pages/api/subscriptions/webhook.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
-import crypto from 'crypto';
 
-// Verify webhook signature from RevenueCat
+// Verify webhook authorization header from RevenueCat
 function verifyWebhook(req: NextApiRequest): boolean {
-  const signature = req.headers['x-revenuecat-signature'] as string;
-  const secret = process.env.REVENUECAT_WEBHOOK_SECRET!;
+  const authHeader = req.headers['authorization'];
+  const expectedAuth = process.env.REVENUECAT_WEBHOOK_AUTH; // Changed from SECRET
   
-  if (!signature || !secret) return false;
+  if (!authHeader || !expectedAuth) {
+    console.error('Missing authorization header or expected auth');
+    return false;
+  }
 
-  const payload = JSON.stringify(req.body);
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(payload);
-  const expectedSignature = hmac.digest('hex');
-
-  return signature === expectedSignature;
+  // RevenueCat sends: "Bearer YOUR_SECRET_KEY"
+  return authHeader === expectedAuth;
 }
 
 export default async function handler(
@@ -27,27 +24,29 @@ export default async function handler(
   }
 
   try {
-    // Verify webhook signature
+    // Verify webhook authorization
     if (!verifyWebhook(req)) {
-      console.error('Invalid webhook signature');
-      return res.status(401).json({ error: 'Invalid signature' });
+      console.error('Invalid webhook authorization');
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const event = req.body;
     const eventType = event.type;
-    const appUserId = event.app_user_id; // This is your Supabase user ID
+    const appUserId = event.app_user_id;
 
-    console.log('RevenueCat webhook:', eventType, appUserId);
+    console.log('📩 RevenueCat webhook:', eventType, 'for user:', appUserId);
 
     // Handle different event types
     switch (eventType) {
       case 'INITIAL_PURCHASE':
       case 'RENEWAL':
       case 'PRODUCT_CHANGE':
-        // Activate subscription
+        console.log('✅ Activating subscription for user:', appUserId);
+        
         await supabaseAdmin
           .from('profiles')
           .update({
+            role: 'premium',
             subscription_status: 'active',
             subscription_platform: event.store === 'APP_STORE' ? 'ios' : 'android',
             subscription_expires_at: event.expiration_at_ms 
@@ -56,10 +55,13 @@ export default async function handler(
             updated_at: new Date().toISOString(),
           })
           .eq('id', appUserId);
+        
+        console.log('✅ Subscription activated');
         break;
 
       case 'CANCELLATION':
-        // Mark as cancelled but keep active until expiry
+        console.log('⚠️ Subscription cancelled for user:', appUserId);
+        
         await supabaseAdmin
           .from('profiles')
           .update({
@@ -67,38 +69,55 @@ export default async function handler(
             updated_at: new Date().toISOString(),
           })
           .eq('id', appUserId);
+        
+        console.log('✅ Subscription marked as cancelled');
         break;
 
       case 'EXPIRATION':
-        // Subscription expired
+        console.log('❌ Subscription expired for user:', appUserId);
+        
         await supabaseAdmin
           .from('profiles')
           .update({
+            role: 'free',
             subscription_status: 'expired',
             updated_at: new Date().toISOString(),
           })
           .eq('id', appUserId);
+        
+        console.log('✅ User downgraded to free');
         break;
 
       case 'BILLING_ISSUE':
-        // Billing problem
-        console.warn('Billing issue for user:', appUserId);
+        console.warn('💳 Billing issue for user:', appUserId);
+        
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            subscription_status: 'cancelled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', appUserId);
+        
+        break;
+
+      case 'SUBSCRIBER_ALIAS':
+        console.log('🔗 Subscriber alias event for user:', appUserId);
         break;
 
       default:
-        console.log('Unhandled event type:', eventType);
+        console.log('ℹ️ Unhandled event type:', eventType);
     }
 
     return res.status(200).json({ received: true });
   } catch (error: any) {
-    console.error('Webhook error:', error);
+    console.error('❌ Webhook error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
 
-// Disable body parsing to access raw body for signature verification
 export const config = {
   api: {
-    bodyParser: true, // RevenueCat sends JSON
+    bodyParser: true,
   },
 };

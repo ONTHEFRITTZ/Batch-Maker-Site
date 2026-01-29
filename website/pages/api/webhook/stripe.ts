@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2026-01-28.clover',
 });
 
 const supabase = createClient(
@@ -52,40 +52,45 @@ export default async function handler(
 
   console.log('✅ Webhook received:', event.type);
 
-  try {
-    switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-        const subscription = event.data.object as Stripe.Subscription;
-        
-        // Update user's subscription status in Supabase
-        await supabase
-          .from('profiles')
-          .update({
-            stripe_customer_id: subscription.customer as string,
-            stripe_subscription_id: subscription.id,
-            subscription_status: subscription.status,
-            subscription_price_id: subscription.items.data[0].price.id,
-            subscription_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
-          })
-          .eq('stripe_customer_id', subscription.customer);
-        
-        console.log('✅ Subscription updated:', subscription.id);
-        break;
+    try {
+     switch (event.type) {
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription & {
+            current_period_end: number;
+         };
 
-      case 'customer.subscription.deleted':
-        const deletedSub = event.data.object as Stripe.Subscription;
+         await supabase
+         .from('profiles')
+         .update({
+           stripe_customer_id: subscription.customer as string,
+           stripe_subscription_id: subscription.id,
+           subscription_status: subscription.status,
+           subscription_price_id: subscription.items.data[0].price.id,
+           subscription_expires_at: new Date(
+             subscription.current_period_end * 1000
+           ).toISOString(),
+         })
+        .eq('stripe_customer_id', subscription.customer);
+
+     break;
+    }
+
+
+
+       case 'customer.subscription.deleted':
+         const deletedSub = event.data.object as Stripe.Subscription;
         
         // Mark subscription as cancelled
-        await supabase
-          .from('profiles')
-          .update({
-            subscription_status: 'cancelled',
-          })
-          .eq('stripe_subscription_id', deletedSub.id);
+         await supabase
+           .from('profiles')
+           .update({
+             subscription_status: 'cancelled',
+           })
+           .eq('stripe_subscription_id', deletedSub.id);
         
-        console.log('✅ Subscription cancelled:', deletedSub.id);
-        break;
+         console.log('✅ Subscription cancelled:', deletedSub.id);
+         break;
 
       case 'invoice.payment_failed':
         const invoice = event.data.object as Stripe.Invoice;
