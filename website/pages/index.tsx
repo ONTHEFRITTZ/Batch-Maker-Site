@@ -192,8 +192,11 @@ export default function Home() {
             </li>
           </ul>
 
-          <button className="w-full py-3 px-6 bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white font-medium rounded-lg transition-colors">
-            Start Team Trial
+          <button 
+             onClick={() => window.location.href = '/dashboard'}
+             className="w-full py-3 px-6 bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white font-medium rounded-lg transition-colors"
+>
+             Start Team Trial
           </button>
         </div>
       </div>

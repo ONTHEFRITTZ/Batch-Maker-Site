@@ -18,7 +18,7 @@ function decodeHtmlEntities(text: string): string {
     // Quotes
     '&quot;': '"', '&#34;': '"', '&#x22;': '"',
     '&apos;': "'", '&#39;': "'", '&#x27;': "'",
-    '&lsquo;': ''', '&#8216;': ''', '&rsquo;': ''', '&#8217;': ''',
+    '&lsquo;': "'", '&#8216;': "'", '&rsquo;': "'", '&#8217;': "'",
     '&ldquo;': '"', '&#8220;': '"', '&rdquo;': '"', '&#8221;': '"',
     
     // Ampersands and basics

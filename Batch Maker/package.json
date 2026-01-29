@@ -15,7 +15,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
-    "@supabase/supabase-js": "^2.93.1",
+    "@supabase/supabase-js": "^2.93.3",
     "@types/react-native": "^0.72.8",
     "expo": "~54.0.31",
     "expo-av": "~16.0.8",
@@ -52,6 +52,7 @@
     "react-native-zeroconf": "^0.14.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "stripe": "^20.3.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
