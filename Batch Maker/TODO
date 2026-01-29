@@ -1,0 +1,535 @@
+# Batch Maker - Master TODO List
+*Last Updated: January 26, 2026*
+
+---
+
+## 🚀 CURRENT SPRINT - Web Platform & OAuth
+
+### ✅ COMPLETED THIS SESSION
+- [x] YouTube video integration in StepScreen
+- [x] Photo capture during batch execution
+- [x] Haptic feedback throughout app
+- [x] Fixed spreadsheet import (groups ingredients by step)
+- [x] React admin dashboard with real-time monitoring
+- [ ] Backend API structure (Node.js + MongoDB + Stripe)
+- [x] User role system (Free, Admin, Premium)
+- [x] Permission service (reports/edit visibility logic)
+- [x] Complete landing page (App Store ready)
+- [x] Legal pages (Privacy, Terms, EULA, Refund)
+- [x] OAuth integration (Google + Apple Sign In)
+
+---
+
+## 🎯 IMMEDIATE PRIORITIES (Next 2 Weeks)
+
+### 1. Backend Deployment & Configuration
+**Status:** Ready to deploy
+**Estimated Time:** 4-6 hours
+
+- [ ] Set up supabase (free tier)
+
+
+- [ ] Configure RevenueCat
+  
+
+- [ ] Deploy API to Vercel
+  - Create Vercel project for API
+  - Add environment variables:
+    * MONGODB_URI
+    * JWT_SECRET (generate: `openssl rand -base64 32`)
+    * STRIPE_SECRET_KEY
+    * STRIPE_WEBHOOK_SECRET
+    * GOOGLE_CLIENT_ID
+    * GOOGLE_CLIENT_SECRET
+    * APPLE_CLIENT_ID
+    * APPLE_TEAM_ID
+    * APPLE_KEY_ID
+    * APPLE_PRIVATE_KEY
+  - Deploy: `vercel --prod`
+  - Test all endpoints
+
+- [ ] Deploy Landing Page to Vercel
+  - Create Vercel project for landing
+  - Point batchmaker.app to Vercel
+  - Verify all legal pages load correctly
+  - Test OAuth flows
+
+- [ ] Deploy Dashboard to Vercel
+  - Create Vercel project for dashboard
+  - Point dashboard.batchmaker.app to Vercel
+  - Connect to WebSocket server
+  - Test real-time updates
+
+### 2. OAuth Setup
+**Status:** Code ready, needs configuration
+**Estimated Time:** 2-3 hours
+
+- [ ] Google OAuth Setup
+  - Go to console.cloud.google.com
+  - Create new project "Batch Maker"
+  - Enable Google+ API
+  - Create OAuth 2.0 credentials
+  - Add redirect: https://batchmaker.app/auth/callback/google
+  - Save CLIENT_ID and CLIENT_SECRET
+  - Test login flow
+
+- [ ] Apple Sign In Setup
+  - Go to developer.apple.com
+  - Create App ID with Sign in with Apple capability
+  - Create Service ID (becomes APPLE_CLIENT_ID)
+  - Add domain: batchmaker.app
+  - Add return URL: https://batchmaker.app/auth/callback/apple
+  - Create Key with Sign in with Apple enabled
+  - Download .p8 private key file
+  - Save TEAM_ID, KEY_ID, and private key content
+  - Test login flow
+
+### 3. Mobile App Updates
+**Status:** Services ready, need integration
+**Estimated Time:** 6-8 hours
+
+- [ ] Add authentication service
+  - Create services/authService.ts (DONE - in artifacts)
+  - Create services/permissionsService.ts (DONE - in artifacts)
+  - Add LoginScreen.tsx (DONE - in artifacts)
+  - Update app/_layout.tsx to check auth on launch
+  - Add logout functionality
+
+- [ ] Update Home Screen
+  - Show user role badge
+  - Hide Reports button based on permissions
+  - Add "Upgrade to Premium" banner for free users
+  - Show sync status indicator
+
+- [ ] Update WorkflowSelectScreen
+  - Hide Edit button based on permissions
+  - Show "Premium Host" badge for synced users
+  - Add "You're synced to [Business Name]" banner
+  - Implement actual WebSocket connection
+
+- [ ] Add "Connect to Business" Prompt
+  - Detect nearby premium hosts on local network
+  - Show modal: "Connect to [Business Name]?"
+  - Handle connection/disconnection
+  - Show connected status in UI
+
+- [ ] Test OAuth in Mobile
+  - Install expo-web-browser
+  - Add deep linking configuration
+  - Test Google Sign In flow
+  - Test Apple Sign In flow
+  - Handle token storage
+
+### 4. WebSocket Real-Time Sync
+**Status:** Not started
+**Estimated Time:** 8-10 hours
+
+- [ ] Create WebSocket server (separate from Vercel)
+  - Deploy to Railway.app or Render.com (Vercel doesn't support long-lived connections)
+  - Use Socket.io for WebSocket server
+  - Handle authentication with JWT
+  - Broadcast batch updates to all connected clients
+  - Handle user connect/disconnect events
+
+- [ ] Premium Host Logic
+  - Premium user opens app → starts WebSocket server
+  - Free users nearby → discover server via mDNS/Bonjour
+  - Show "Connect to [Business Name]?" prompt
+  - Sync workflows/batches in real-time
+
+- [ ] Client Sync Logic
+  - Connect to premium host WebSocket
+  - Subscribe to batch updates
+  - Send local changes to host
+  - Handle conflicts (last-write-wins)
+  - Show sync status icon
+
+---
+
+## 📱 APP STORE SUBMISSION (Week 3-4)
+
+### Apple App Store
+**Status:** Requirements met, ready to submit
+**Estimated Time:** 2-3 hours + review time (1-2 weeks)
+
+- [ ] Prepare App Store Connect
+  - Create app listing
+  - Add app name: "Batch Maker"
+  - Add subtitle: "Workflow Management for Food Production"
+  - Add description (use landing page copy)
+  - Add keywords: bakery, workflow, SOP, recipe, production
+
+- [ ] Required Links (DONE - add these to App Store Connect)
+  - Privacy Policy: https://batchmaker.app/privacy
+  - Terms of Service: https://batchmaker.app/terms
+  - Support URL: https://batchmaker.app/support
+
+- [ ] Screenshots (5.5" and 6.5" iPhone)
+  - Home screen with workflow list
+  - Step execution screen with checklist
+  - Timer screen
+  - Batch completion screen
+  - Reports screen
+  - Add text overlays explaining features
+
+- [ ] App Preview Video (optional but recommended)
+  - 30 second video showing core workflow
+  - Record on actual device
+  - Add captions
+
+- [ ] Submit for Review
+  - Select "Free with In-App Purchases"
+  - Add subscription products (Pro, Enterprise)
+  - Submit binary
+  - Wait for review
+
+### Google Play Store
+**Status:** Requirements met, ready to submit
+**Estimated Time:** 2-3 hours + review time (1-3 days)
+
+- [ ] Prepare Play Console
+  - Create app listing
+  - Add title: "Batch Maker - SOP Workflow Manager"
+  - Add short description (80 chars)
+  - Add full description (use landing page copy)
+
+- [ ] Required Links (DONE - add these to Play Console)
+  - Privacy Policy: https://batchmaker.app/privacy
+  - Terms of Service: https://batchmaker.app/terms
+
+- [ ] Screenshots (Phone + 7" Tablet + 10" Tablet)
+  - Same as iOS but different dimensions
+  - Phone: 1080x1920
+  - 7" Tablet: 1920x1200
+  - 10" Tablet: 2560x1600
+
+- [ ] Feature Graphic
+  - 1024x500 image for Play Store header
+  - Include app name and tagline
+  - Use brand colors (purple gradient)
+
+- [ ] Content Rating
+  - Fill out questionnaire
+  - Should be rated "Everyone"
+
+- [ ] Submit for Review
+  - Set pricing (Free)
+  - Add in-app products
+  - Submit APK/AAB
+  - Wait for review
+
+---
+
+## 🔥 HIGH PRIORITY FEATURES
+
+### Enhanced Reporting & Analytics
+**Status:** Basic reports done, need charts
+**Estimated Time:** 10-12 hours
+
+- [ ] Add chart library to dashboard (Chart.js or Recharts)
+- [ ] Batch completion trends graph (last 30 days)
+- [ ] Ingredient cost breakdown pie chart
+- [ ] Average duration by workflow bar chart
+- [ ] Efficiency score calculation
+- [ ] Export charts as PNG/PDF
+- [ ] Schedule automated email reports
+
+### Workflow Repository (Premade Templates)
+**Status:** Not started
+**Estimated Time:** 15-20 hours
+
+- [ ] Create 10-15 high-quality template workflows
+  - Chocolate chip cookies
+  - Sourdough starter maintenance
+  - Bagels
+  - Croissants
+  - Pizza dough
+  - Cleaning checklists
+  - Equipment maintenance
+  - Opening/closing procedures
+
+- [ ] Build template browser in app
+  - Searchable/filterable
+  - Preview before importing
+  - One-click import
+  - Rate/review templates
+
+- [ ] Admin template management
+  - Upload new templates to cloud
+  - Version control
+  - Analytics (most popular templates)
+
+### Multi-Device Sync Improvements
+**Status:** Basic structure done, needs polish
+**Estimated Time:** 8-10 hours
+
+- [ ] Better conflict resolution
+  - Show "Conflict detected" dialog
+  - Let user choose which version to keep
+  - Merge non-conflicting changes
+
+- [ ] Visual sync indicators
+  - Animated sync icon
+  - "Last synced: 2 minutes ago"
+  - Show which users are actively working
+
+- [ ] Offline mode handling
+  - Queue changes while offline
+  - Sync when connection restored
+  - Show "Working offline" banner
+
+- [ ] Device discovery improvements
+  - Show signal strength
+  - Show estimated sync time
+  - Allow manual IP entry for troubleshooting
+
+---
+
+## 🎨 MEDIUM PRIORITY FEATURES
+
+### Photo Features Enhancement
+**Status:** Basic capture done, needs gallery
+**Estimated Time:** 6-8 hours
+
+- [ ] Photo gallery view in reports
+- [ ] Photo comparison (before/after)
+- [ ] Annotate photos with text/arrows
+- [ ] Photo compression settings
+- [ ] Batch photo export as ZIP
+- [ ] Photo timestamps in reports
+
+### Timer Enhancements
+**Status:** Basic timer done, needs features
+**Estimated Time:** 4-6 hours
+
+- [ ] Multiple simultaneous timers per step
+- [ ] Customizable timer alerts (sound selection)
+- [ ] Background timer notifications (local notifications)
+- [ ] Timer templates ("Quick 5 min", "Quick 10 min")
+- [ ] Timer history log
+- [ ] Pause/resume functionality
+
+### Advanced Step Features
+**Status:** Not started
+**Estimated Time:** 10-15 hours
+
+- [ ] Step dependencies
+  - Can't start Step 5 until Step 3 is complete
+  - Visual dependency graph
+  - Auto-advance to next available step
+
+- [ ] Conditional steps
+  - "If Bake Today mode, skip cold ferment step"
+  - "If batch size > 2x, show additional mixing step"
+
+- [ ] Temperature logging integration
+  - Connect Bluetooth thermometers
+  - Auto-log temperatures
+  - Alert if out of range
+
+- [ ] Weight measurement tracking
+  - Connect Bluetooth scales
+  - Auto-populate ingredient amounts
+  - Track yield vs expected
+
+---
+
+## 🔮 LOW PRIORITY / FUTURE
+
+### QR Code Batch Tracking
+**Status:** Not started, needs research
+**Estimated Time:** 20+ hours
+
+- [ ] Research thermal printer options
+  - Brother PocketJet (expensive but mobile)
+  - MUNBYN thermal printer (affordable, USB)
+  - Zebra label printers (enterprise)
+  
+- [ ] QR code generation
+  - Generate unique code per batch
+  - Include batch ID, workflow, date, operator
+  
+- [ ] Thermal printer integration
+  - React Native printer library research
+  - Test with actual hardware
+  - Print batch labels
+  - Print station assignments
+
+- [ ] QR scanning
+  - Open camera
+  - Scan QR code
+  - Jump directly to that batch
+  - Show batch history
+
+### Advanced UI/UX Polish
+**Status:** Ongoing
+**Estimated Time:** Varies
+
+- [ ] Loading states everywhere
+- [ ] Skeleton screens while loading
+- [ ] Empty state illustrations
+- [ ] Onboarding flow for new users
+- [ ] Interactive tutorial
+- [ ] Dark mode improvements
+- [ ] Animations/transitions between screens
+
+### Accessibility
+**Status:** Not started
+**Estimated Time:** 15-20 hours
+
+- [ ] Screen reader support (iOS VoiceOver, Android TalkBack)
+- [ ] High contrast mode
+- [ ] Adjustable font sizes
+- [ ] Keyboard navigation (web dashboard)
+- [ ] Color blind friendly palette
+- [ ] WCAG 2.1 AA compliance audit
+
+---
+
+## 🏗️ TECHNICAL DEBT
+
+### Code Quality
+- [ ] Add TypeScript types to all services
+- [ ] Write unit tests for critical functions
+  - Auth service tests
+  - Permission service tests
+  - Database CRUD tests
+  - Stripe webhook tests
+  
+- [ ] Error boundaries in React components
+- [ ] Proper error logging (Sentry integration?)
+- [ ] Performance monitoring (detect slow queries)
+
+### Security Review
+- [ ] Audit API endpoints for vulnerabilities
+- [ ] Rate limiting on all endpoints
+- [ ] Input validation everywhere
+- [ ] SQL injection prevention audit
+- [ ] XSS prevention audit
+- [ ] CSRF protection for web dashboard
+
+### Migration Tasks
+- [ ] Migrate from expo-file-system/legacy to new API
+- [ ] Update deprecated React Native components
+- [ ] Remove any console.log statements
+- [ ] Optimize large images/assets
+
+---
+
+## 💡 FUTURE MOONSHOT IDEAS
+
+### Integration Ecosystem
+- [ ] Shopify integration (auto-create batches from orders)
+- [ ] Square/Toast POS integration
+- [ ] QuickBooks integration (cost tracking)
+- [ ] Smart oven integration (Anova, Breville)
+- [ ] Smart scale integration (MyWeigh, Escali)
+- [ ] Google Calendar sync (schedule batches)
+
+### AI Features
+- [ ] AI recipe parser (improved intelligence)
+- [ ] Predictive batch scheduling
+- [ ] Anomaly detection (unusual duration/yield)
+- [ ] Voice commands for hands-free operation
+- [ ] Auto-generate workflow from photos
+
+### Community Features
+- [ ] Recipe sharing marketplace
+- [ ] Rate/review workflows
+- [ ] Follow other bakers
+- [ ] Live streams of batch execution
+- [ ] Community forum
+
+### Enterprise Features
+- [ ] Customer order tracking
+- [ ] Production scheduling calendar
+- [ ] Inventory management
+- [ ] Staff scheduling
+- [ ] Equipment maintenance logs
+- [ ] Multi-location support
+- [ ] Role-based permissions (manager, supervisor, operator)
+
+---
+
+## 📊 METRICS TO TRACK
+
+### Business Metrics
+- [ ] MAU (Monthly Active Users)
+- [ ] Conversion rate (Free → Premium)
+- [ ] Churn rate
+- [ ] Average revenue per user (ARPU)
+- [ ] Customer acquisition cost (CAC)
+- [ ] Lifetime value (LTV)
+
+### Product Metrics
+- [ ] Daily active users (DAU)
+- [ ] Workflows created per user
+- [ ] Batches completed per day
+- [ ] Average session duration
+- [ ] Feature adoption rates
+- [ ] Crash rate
+- [ ] API response times
+
+### Support Metrics
+- [ ] Support ticket volume
+- [ ] Average response time
+- [ ] Customer satisfaction (CSAT)
+- [ ] Net Promoter Score (NPS)
+
+---
+
+## 🎯 SUCCESS CRITERIA
+
+### Month 1
+- [ ] 100+ downloads
+- [ ] 10+ premium users
+- [ ] 50+ workflows created
+- [ ] < 1% crash rate
+- [ ] 4.5+ star rating on App Store
+
+### Month 3
+- [ ] 1,000+ downloads
+- [ ] 50+ premium users
+- [ ] $500+ MRR
+- [ ] Featured in App Store (apply for featuring)
+- [ ] First case study/testimonial
+
+### Month 6
+- [ ] 5,000+ downloads
+- [ ] 200+ premium users
+- [ ] $2,000+ MRR
+- [ ] Break even on costs
+- [ ] Launch Android app
+
+### Year 1
+- [ ] 20,000+ downloads
+- [ ] 1,000+ premium users
+- [ ] $10,000+ MRR
+- [ ] Hire first employee (customer support)
+- [ ] Launch workflow marketplace
+
+---
+
+## 📝 NOTES
+
+### Remember
+- Keep mobile app fully functional offline (core value prop)
+- Premium users get "host" capability (network effect)
+- Admin role allows trusted staff to edit without paying
+- Reports hidden from free users when synced (privacy)
+- Always test on real devices, not just simulators
+- Prioritize bakery-specific features over generic PM tools
+
+### Nice-to-Have vs Must-Have
+- Must-Have: Core workflow execution, timers, checklists
+- Nice-to-Have: AI features, integrations, marketplace
+
+### Questions to Answer
+- Should we allow free users to create templates and sell them?
+- What's the right enterprise pricing tier?
+- Should we build a desktop app (Electron)?
+- Do we need video chat for remote training?
+
+---
+
+*End of TODO - Keep this updated as priorities shift!*

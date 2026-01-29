@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Batch Maker",
+    "slug": "batch-maker",
+    "scheme": "batchmaker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "sdkVersion": "54.0.0",
+    "jsEngine": "hermes",
+    "icon": ".app/assets/images/adaptive-icon.png",
+    "splash": {
+      "image": ".app/assets/images/batch-maker-alpha.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "android": {
+      "package": "com.batchmaker.app",
+      "adaptiveIcon": {
+        "foregroundImage": ".app/assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.batchmaker.app"
+    },
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "221ac77d-8696-45c2-8466-d710dc857ab6"
+      }
+    },
+    "owner": "onthefrittz"
+  }
+}
