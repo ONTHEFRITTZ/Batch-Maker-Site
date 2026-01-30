@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { supabase } from '../app/lib/supabase';
 
 const REPORTS_KEY = '@reports';
 
@@ -13,6 +12,7 @@ export interface EnvironmentalReport {
   humidity?: number;
   notes?: string;
   createdBy: string;
+  userId?: string; // Added for Supabase sync
 }
 
 export interface IngredientUsage {
@@ -43,6 +43,7 @@ export interface BatchCompletionReport {
   totalCost?: number;
   yieldAmount?: number;
   yieldUnit?: string;
+  userId?: string; // Added for Supabase sync
 }
 
 export interface DailyReport {
@@ -56,6 +57,7 @@ export interface DailyReport {
   totalYield?: { [unit: string]: number };
   environmentalReports: EnvironmentalReport[];
   batchCompletions: BatchCompletionReport[];
+  userId?: string; // Added for Supabase sync
 }
 
 interface ReportsData {
@@ -70,13 +72,28 @@ let reportsData: ReportsData = {
   daily: [],
 };
 
+// Get current user ID
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return null;
+  }
+}
+
 export async function initializeReports(): Promise<void> {
   try {
+    // First load from local storage
     const stored = await AsyncStorage.getItem(REPORTS_KEY);
     if (stored) {
       reportsData = JSON.parse(stored);
-      console.log(`Loaded reports: ${reportsData.environmental.length} environmental, ${reportsData.batchCompletions.length} batch, ${reportsData.daily.length} daily`);
+      console.log(`Loaded reports from local: ${reportsData.environmental.length} environmental, ${reportsData.batchCompletions.length} batch, ${reportsData.daily.length} daily`);
     }
+
+    // Then sync with Supabase
+    await syncFromSupabase();
   } catch (error) {
     console.error('Error loading reports:', error);
   }
@@ -84,9 +101,143 @@ export async function initializeReports(): Promise<void> {
 
 async function saveReports(): Promise<void> {
   try {
+    // Save locally
     await AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(reportsData));
   } catch (error) {
-    console.error('Error saving reports:', error);
+    console.error('Error saving reports locally:', error);
+  }
+}
+
+// Sync reports from Supabase
+async function syncFromSupabase(): Promise<void> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('⚠️ No user logged in, skipping Supabase sync');
+      return;
+    }
+
+    console.log('🔄 Syncing reports from Supabase...');
+
+    // Fetch batch completion reports
+    const { data: batchReports, error: batchError } = await supabase
+      .from('batch_completion_reports')
+      .select('*')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false });
+
+    if (batchError) {
+      console.error('Error fetching batch reports:', batchError);
+    } else if (batchReports) {
+      // Merge with local data (keep local if not in Supabase)
+      const supabaseIds = new Set(batchReports.map(r => r.id));
+      const localOnly = reportsData.batchCompletions.filter(r => !supabaseIds.has(r.id));
+      
+      reportsData.batchCompletions = [
+        ...batchReports.map(r => ({
+          ...r,
+          userId: r.user_id,
+          stepNotes: r.step_notes || {},
+          temperatureLog: r.temperature_log || [],
+          ingredientsUsed: r.ingredients_used || [],
+        })),
+        ...localOnly
+      ];
+      console.log(`✅ Synced ${batchReports.length} batch reports from Supabase`);
+    }
+
+    // Fetch environmental reports
+    const { data: envReports, error: envError } = await supabase
+      .from('environmental_reports')
+      .select('*')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false });
+
+    if (envError) {
+      console.error('Error fetching environmental reports:', envError);
+    } else if (envReports) {
+      const supabaseIds = new Set(envReports.map(r => r.id));
+      const localOnly = reportsData.environmental.filter(r => !supabaseIds.has(r.id));
+      
+      reportsData.environmental = [
+        ...envReports.map(r => ({
+          ...r,
+          userId: r.user_id,
+          ambientTemp: r.ambient_temp,
+          createdBy: r.created_by,
+        })),
+        ...localOnly
+      ];
+      console.log(`✅ Synced ${envReports.length} environmental reports from Supabase`);
+    }
+
+    await saveReports();
+  } catch (error) {
+    console.error('Error syncing from Supabase:', error);
+  }
+}
+
+// Sync a report to Supabase
+async function syncToSupabase(report: any, table: string): Promise<void> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('⚠️ No user logged in, saving locally only');
+      return;
+    }
+
+    let data: any = { ...report, user_id: userId };
+
+    // Convert field names to snake_case for Supabase
+    if (table === 'batch_completion_reports') {
+      data = {
+        id: report.id,
+        user_id: userId,
+        batch_id: report.batchId,
+        batch_name: report.batchName,
+        workflow_id: report.workflowId,
+        workflow_name: report.workflowName,
+        timestamp: report.timestamp,
+        date: report.date,
+        time: report.time,
+        completed_by: report.completedBy,
+        batch_size_multiplier: report.batchSizeMultiplier,
+        environmental_report_id: report.environmentalReportId,
+        actual_duration: report.actualDuration,
+        notes: report.notes,
+        photos: report.photos,
+        step_notes: report.stepNotes,
+        temperature_log: report.temperatureLog,
+        ingredients_used: report.ingredientsUsed,
+        total_cost: report.totalCost,
+        yield_amount: report.yieldAmount,
+        yield_unit: report.yieldUnit,
+      };
+    } else if (table === 'environmental_reports') {
+      data = {
+        id: report.id,
+        user_id: userId,
+        timestamp: report.timestamp,
+        date: report.date,
+        time: report.time,
+        ambient_temp: report.ambientTemp,
+        humidity: report.humidity,
+        notes: report.notes,
+        created_by: report.createdBy,
+      };
+    }
+
+    const { error } = await supabase
+      .from(table)
+      .upsert(data, { onConflict: 'id' });
+
+    if (error) {
+      console.error(`Error syncing to ${table}:`, error);
+    } else {
+      console.log(`✅ Synced report to ${table}`);
+    }
+  } catch (error) {
+    console.error('Error syncing to Supabase:', error);
   }
 }
 
@@ -111,6 +262,8 @@ export async function createEnvironmentalReport(
   notes?: string
 ): Promise<EnvironmentalReport> {
   const timestamp = Date.now();
+  const userId = await getCurrentUserId();
+  
   const report: EnvironmentalReport = {
     id: `env_${timestamp}`,
     timestamp,
@@ -120,10 +273,13 @@ export async function createEnvironmentalReport(
     humidity,
     notes,
     createdBy,
+    userId: userId || undefined,
   };
 
   reportsData.environmental.push(report);
   await saveReports();
+  await syncToSupabase(report, 'environmental_reports');
+  
   return report;
 }
 
@@ -141,6 +297,16 @@ export function getTodaysEnvironmentalReports(): EnvironmentalReport[] {
 export async function deleteEnvironmentalReport(id: string): Promise<void> {
   reportsData.environmental = reportsData.environmental.filter(r => r.id !== id);
   await saveReports();
+  
+  // Delete from Supabase
+  const userId = await getCurrentUserId();
+  if (userId) {
+    await supabase
+      .from('environmental_reports')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+  }
 }
 
 // ============================================
@@ -164,6 +330,7 @@ export async function createBatchCompletionReport(
 ): Promise<BatchCompletionReport> {
   const timestamp = Date.now();
   const todayDate = getTodayDateString();
+  const userId = await getCurrentUserId();
 
   const todaysEnvReports = getTodaysEnvironmentalReports();
   const environmentalReportId = todaysEnvReports.length > 0 
@@ -192,10 +359,13 @@ export async function createBatchCompletionReport(
     totalCost,
     yieldAmount,
     yieldUnit,
+    userId: userId || undefined,
   };
 
   reportsData.batchCompletions.push(report);
   await saveReports();
+  await syncToSupabase(report, 'batch_completion_reports');
+
   return report;
 }
 
@@ -223,6 +393,16 @@ export function searchBatchReports(query: string): BatchCompletionReport[] {
 export async function deleteBatchCompletionReport(id: string): Promise<void> {
   reportsData.batchCompletions = reportsData.batchCompletions.filter(r => r.id !== id);
   await saveReports();
+  
+  // Delete from Supabase
+  const userId = await getCurrentUserId();
+  if (userId) {
+    await supabase
+      .from('batch_completion_reports')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+  }
 }
 
 // ============================================
@@ -301,6 +481,28 @@ export function getDailyReport(date: string): DailyReport | undefined {
 export async function deleteDailyReport(id: string): Promise<void> {
   reportsData.daily = reportsData.daily.filter(r => r.id !== id);
   await saveReports();
+}
+
+// ============================================
+// MANUAL SYNC
+// ============================================
+
+export async function forceSyncToSupabase(): Promise<void> {
+  console.log('🔄 Force syncing all reports to Supabase...');
+  
+  for (const report of reportsData.batchCompletions) {
+    await syncToSupabase(report, 'batch_completion_reports');
+  }
+  
+  for (const report of reportsData.environmental) {
+    await syncToSupabase(report, 'environmental_reports');
+  }
+  
+  console.log('✅ Force sync complete');
+}
+
+export async function forceSyncFromSupabase(): Promise<void> {
+  await syncFromSupabase();
 }
 
 // ============================================
@@ -424,6 +626,9 @@ export async function importReportsFromJSON(jsonString: string): Promise<void> {
 
     reportsData = imported;
     await saveReports();
+    
+    // Sync imported data to Supabase
+    await forceSyncToSupabase();
   } catch (error) {
     console.error('Error importing reports:', error);
     throw error;

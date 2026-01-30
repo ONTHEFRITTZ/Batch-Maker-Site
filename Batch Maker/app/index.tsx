@@ -30,6 +30,7 @@ export default function HomeScreen() {
 
     // Handle deep links from OAuth redirect
     const handleDeepLink = (event: { url: string }) => {
+      console.log('🔗 handleDeepLink FIRED!');
       const url = event.url;
       console.log('Deep link received:', url);
       
@@ -42,11 +43,18 @@ export default function HomeScreen() {
         const refresh_token = params.get('refresh_token');
         
         if (access_token && refresh_token) {
+          console.log('✅ Tokens found in deep link, setting session...');
           supabase.auth.setSession({
             access_token,
             refresh_token,
-          }).then(() => {
-            console.log('✅ Session set successfully');
+          }).then(({ data, error }) => {
+            if (error) {
+              console.error('❌ Error setting session:', error);
+            } else {
+              console.log('✅ Session set successfully! User:', data.user?.email);
+              // Force navigation to home to clear the unmatched route
+              router.replace('/');
+            }
           }).catch((error) => {
             console.error('❌ Error setting session:', error);
           });
@@ -65,16 +73,15 @@ export default function HomeScreen() {
 
   const signInWithGoogle = async () => {
     try {
-      // FIXED: Use your app's custom scheme for mobile deep linking
-      // This tells Google to redirect back to your mobile app, not the website
-      const redirectUrl = 'batchmaker://auth/callback';
+      // Just use the base scheme - the deep link handler will catch it
+      const redirectUrl = 'batchmaker://';
       console.log('Redirect URL:', redirectUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
+          skipBrowserRedirect: false,
         },
       });
 

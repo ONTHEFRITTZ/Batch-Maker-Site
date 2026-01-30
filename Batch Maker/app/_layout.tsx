@@ -1,11 +1,23 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
+import * as Linking from 'expo-linking';
 import CustomHeader from './components/CustomHeader';
 import { initializeDatabase } from '../services/database';
 import { initializeReports } from '../services/reports';
 import { initializePhotoStorage } from '../services/photoStorage';
 import { syncService } from '../services/sync';
 import { ThemeProvider } from '../contexts/ThemeContext';
+
+// Global deep link listener
+Linking.addEventListener('url', (event) => {
+  console.log('🔗 GLOBAL deep link listener:', event.url);
+});
+
+// Configure which files Expo Router should ignore
+export const unstable_settings = {
+  // Ensure any route can show the initial URL
+  initialRouteName: 'index',
+};
 
 export default function Layout() {
   useEffect(() => {
@@ -27,10 +39,9 @@ export default function Layout() {
         console.error('❌ Error initializing app:', error);
       }
     };
-
     initializeApp();
   }, []);
-
+  
   return (
     <ThemeProvider>
       <Stack
@@ -42,6 +53,10 @@ export default function Layout() {
       >
         <Stack.Screen 
           name="index" 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="callback" 
           options={{ headerShown: false }}
         />
         <Stack.Screen 
