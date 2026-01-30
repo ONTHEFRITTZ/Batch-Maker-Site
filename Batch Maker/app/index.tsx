@@ -34,8 +34,10 @@ export default function HomeScreen() {
       console.log('Deep link received:', url);
       
       // Extract tokens from URL and set session
-      if (url.includes('#access_token=')) {
-        const params = new URLSearchParams(url.split('#')[1]);
+      if (url.includes('#access_token=') || url.includes('?access_token=')) {
+        // Handle both # and ? parameter formats
+        const paramString = url.includes('#') ? url.split('#')[1] : url.split('?')[1];
+        const params = new URLSearchParams(paramString);
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
         
@@ -43,6 +45,10 @@ export default function HomeScreen() {
           supabase.auth.setSession({
             access_token,
             refresh_token,
+          }).then(() => {
+            console.log('✅ Session set successfully');
+          }).catch((error) => {
+            console.error('❌ Error setting session:', error);
           });
         }
       }
@@ -59,15 +65,16 @@ export default function HomeScreen() {
 
   const signInWithGoogle = async () => {
     try {
-      // Create the redirect URL for your app
-      const redirectUrl = Linking.createURL('/');
+      // FIXED: Use your app's custom scheme for mobile deep linking
+      // This tells Google to redirect back to your mobile app, not the website
+      const redirectUrl = 'batchmaker://auth/callback';
       console.log('Redirect URL:', redirectUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true, // We'll handle the browser ourselves
+          skipBrowserRedirect: true,
         },
       });
 
