@@ -193,7 +193,7 @@ export default function Home() {
           </ul>
 
           <button 
-             onClick={() => window.location.href = '/dashboard'}
+             onClick={() => window.location.href = '/register'}  // Change from /dashboard to /register
              className="w-full py-3 px-6 bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white font-medium rounded-lg transition-colors"
 >
              Start Team Trial

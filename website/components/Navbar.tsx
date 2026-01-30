@@ -15,7 +15,6 @@ export default function Navbar() {
             Batch Maker
           </span>
         </Link>
-
         {/* Navigation */}
         <nav className="flex items-center gap-8">
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
@@ -29,10 +28,9 @@ export default function Navbar() {
               Support
             </Link>
           </div>
-
-          {/* Sign In Button */}
+          {/* Sign In Button - CHANGED FROM /dashboard TO /login */}
           <Link 
-            href="/dashboard" 
+            href="/login" 
             className="bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-6 py-2 rounded-lg font-medium transition-colors"
           >
             Sign In
