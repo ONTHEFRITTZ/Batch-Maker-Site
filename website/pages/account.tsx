@@ -1,242 +1,261 @@
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import Head from "next/head"
+'use client';
+
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import Link from 'next/link';
 
 export default function Account() {
-  const [user, setUser] = useState<any>(null)
-  const [subscription, setSubscription] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadAccountData()
-  }, [])
+    loadUserData();
+  }, []);
 
-  const loadAccountData = async () => {
+  async function loadUserData() {
     try {
-      const token = localStorage.getItem('access_token')
-      if (!token) {
-        window.location.href = '/dashboard'
-        return
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Use Next.js router instead of window.location for better navigation
+        window.location.href = '/login';
+        return;
       }
 
-      // Get subscription status
-      const response = await fetch('/api/subscriptions/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      setUser(session.user);
 
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data)
-        setSubscription(data)
-      }
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      setProfile(profileData);
     } catch (error) {
-      console.error('Error loading account:', error)
+      console.error('Error loading user data:', error);
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
   }
 
-  const handleManageSubscription = async () => {
-    try {
-      const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/stripe/create-portal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      const data = await response.json()
-      
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert('Unable to open billing portal')
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Failed to open subscription portal')
-    }
-  }
-
-  const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure? This will permanently delete all your data. This cannot be undone.')) {
-      return
+  async function handleDeleteAccount() {
+    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) {
+      return;
     }
 
     try {
-      const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/account/delete', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        localStorage.clear()
-        alert('Account deleted successfully')
-        window.location.href = '/'
-      } else {
-        alert('Failed to delete account')
-      }
+      // Delete user data
+      await supabase.from('workflows').delete().eq('user_id', user.id);
+      await supabase.from('batches').delete().eq('user_id', user.id);
+      await supabase.from('reports').delete().eq('user_id', user.id);
+      await supabase.from('photos').delete().eq('user_id', user.id);
+      
+      // Sign out
+      await supabase.auth.signOut();
+      window.location.href = '/';
     } catch (error) {
-      console.error('Error:', error)
-      alert('Failed to delete account')
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account. Please contact support.');
     }
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#E8E8E8] flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div style={styles.container}>
+        <div style={styles.loading}>Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
-    <>
-      <Head>
-        <title>Account Settings - Batch Maker</title>
-      </Head>
+    <div style={styles.container}>
+      {/* Header */}
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <h1 style={styles.title}>Account Settings</h1>
+          <Link href="/dashboard" style={styles.backButton}>
+            ← Back to Dashboard
+          </Link>
+        </div>
+      </header>
 
-      <div className="min-h-screen bg-[#E8E8E8]">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/assets/icons/logo.png" alt="Batch Maker" className="h-9 w-9" />
-              <span className="text-lg font-semibold">Batch Maker</span>
-            </Link>
+      <div style={styles.content}>
+        {/* Account Details */}
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Account Details</h2>
+          
+          <div style={styles.field}>
+            <label style={styles.label}>Email</label>
+            <div style={styles.value}>{user?.email}</div>
+          </div>
 
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <button
-                onClick={() => {
-                  localStorage.clear()
-                  window.location.href = '/'
-                }}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Sign Out
-              </button>
+          <div style={styles.field}>
+            <label style={styles.label}>User ID</label>
+            <div style={styles.valueSmall}>{user?.id}</div>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>Account Created</label>
+            <div style={styles.value}>
+              {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Content */}
-        <main className="max-w-4xl mx-auto px-6 py-12">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Settings</h1>
-            <p className="text-gray-600">Manage your subscription and account preferences</p>
-          </div>
-
-          {/* Account Info */}
-          <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Account Information</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Email</label>
-                <div className="text-gray-900">{user?.email || 'Not available'}</div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Device</label>
-                <div className="text-gray-900">{user?.device_name || 'Unknown Device'}</div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Member Since</label>
-                <div className="text-gray-900">
-                  {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                </div>
-              </div>
+        {/* Subscription Info */}
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Subscription</h2>
+          
+          <div style={styles.field}>
+            <label style={styles.label}>Status</label>
+            <div style={styles.value}>
+              <span style={styles.badge}>
+                {profile?.subscription_status || 'Free'}
+              </span>
             </div>
           </div>
 
-          {/* Subscription Info */}
-          <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Subscription</h2>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Status</label>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                    subscription?.subscription_status === 'active' 
-                      ? 'bg-green-100 text-green-800'
-                      : subscription?.subscription_status === 'trial'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {subscription?.subscription_status?.toUpperCase() || 'FREE'}
-                  </span>
-                </div>
-              </div>
-
-              {subscription?.days_remaining && (
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">Time Remaining</label>
-                  <div className="text-gray-900">{subscription.days_remaining} days</div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Plan</label>
-                <div className="text-gray-900">
-                  {subscription?.role === 'premium' ? 'Team Plan' : 'Free Plan'}
-                </div>
-              </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Role</label>
+            <div style={styles.value}>
+              {profile?.role || 'user'}
             </div>
-
-            {subscription?.role === 'premium' && (
-              <button
-                onClick={handleManageSubscription}
-                className="bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                Manage Subscription
-              </button>
-            )}
-
-            {subscription?.role !== 'premium' && (
-              <Link
-                href="/#pricing"
-                className="inline-block bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                Upgrade to Team Plan
-              </Link>
-            )}
           </div>
+        </div>
 
-          {/* Danger Zone */}
-          <div className="bg-white rounded-3xl shadow-lg p-8 border-2 border-red-200">
-            <h2 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h2>
-            
-            <p className="text-gray-600 mb-6">
-              Once you delete your account, there is no going back. All your workflows, batches, and data will be permanently deleted.
-            </p>
-
-            <button
-              onClick={handleDeleteAccount}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              Delete Account
-            </button>
-          </div>
-
-          <div className="mt-8">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-              ← Back to Dashboard
-            </Link>
-          </div>
-        </main>
+        {/* Danger Zone */}
+        <div style={styles.dangerCard}>
+          <h2 style={styles.dangerTitle}>Danger Zone</h2>
+          <p style={styles.dangerText}>
+            Deleting your account will permanently remove all your workflows, batches, 
+            reports, and photos. This action cannot be undone.
+          </p>
+          <button onClick={handleDeleteAccount} style={styles.deleteButton}>
+            Delete Account
+          </button>
+        </div>
       </div>
-    </>
-  )
+    </div>
+  );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    minHeight: '100vh',
+    backgroundColor: '#f9fafb',
+  },
+  header: {
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #e5e7eb',
+    padding: '1rem 0',
+  },
+  headerContent: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '0 1.5rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: '1.5rem',
+    fontWeight: '600',
+    margin: 0,
+    color: '#111827',
+  },
+  backButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    textDecoration: 'none',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+  },
+  content: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '2rem 1.5rem',
+  },
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100vh',
+    fontSize: '1.125rem',
+    color: '#6b7280',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: '0.75rem',
+    padding: '1.5rem',
+    marginBottom: '1.5rem',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+  },
+  cardTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    marginBottom: '1.5rem',
+    color: '#111827',
+  },
+  field: {
+    marginBottom: '1.25rem',
+  },
+  label: {
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: '0.5rem',
+  },
+  value: {
+    fontSize: '1rem',
+    color: '#111827',
+  },
+  valueSmall: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    fontFamily: 'monospace',
+  },
+  badge: {
+    display: 'inline-block',
+    padding: '0.25rem 0.75rem',
+    backgroundColor: '#10b981',
+    color: '#ffffff',
+    borderRadius: '0.375rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    textTransform: 'capitalize' as const,
+  },
+  dangerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: '0.75rem',
+    padding: '1.5rem',
+    border: '2px solid #ef4444',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+  },
+  dangerTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    marginBottom: '0.75rem',
+    color: '#dc2626',
+  },
+  dangerText: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    marginBottom: '1rem',
+    lineHeight: '1.5',
+  },
+  deleteButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#dc2626',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+};

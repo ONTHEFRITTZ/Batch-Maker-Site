@@ -12,16 +12,21 @@ export default async function handler(
 
   try {
     const user = await getUserFromRequest(req);
-    const hasAccess = await checkSubscription(user.id);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    if (!hasAccess) {
+    const { isActive } = await checkSubscription(user.id);
+
+    if (!isActive) {
       return res.status(403).json({ error: 'Subscription required' });
     }
 
     const { lastSync } = req.query;
     const lastSyncDate = lastSync ? new Date(lastSync as string) : null;
 
-    // Fetch all user data
+    // Fetch all user data with optional incremental sync
     const [workflowsRes, batchesRes, reportsRes, photosRes] = await Promise.all([
       supabase
         .from('workflows')
@@ -58,6 +63,6 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Pull sync error:', error);
-    return res.status(401).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
