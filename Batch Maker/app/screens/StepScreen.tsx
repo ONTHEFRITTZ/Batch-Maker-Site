@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FC, useEffect, useState } from "react";
-import { ScrollView, Text, View, TouchableOpacity, StyleSheet, Alert, Image } from "react-native";
-import * as ImagePicker from 'expo-image-picker';
+import { ScrollView, Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import * as Haptics from 'expo-haptics';
 import { 
   getWorkflows, getBatch, updateBatchStep, completeBatchStep,
@@ -9,10 +8,10 @@ import {
   Workflow, Batch 
 } from "../../services/database";
 import { createBatchCompletionReport } from "../../services/reports";
-import { savePhoto, getBatchPhotos } from "../../services/photoStorage";
 import BatchTimer from '../components/BatchTimer';
 import YouTubeVideo from '../components/YouTubeVideo';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useVoiceCommands, VoiceCommand } from '../../android/app/src/hooks/useVoiceCommands';
 
 // Haptic feedback helpers
 const haptics = {
@@ -34,8 +33,39 @@ export const StepScreen: FC = () => {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [stepPhotos, setStepPhotos] = useState<string[]>([]);
-  const [photoRequired, setPhotoRequired] = useState(false);
+
+  // Voice Commands Setup
+  const voiceCommands: VoiceCommand[] = [
+    {
+      command: 'next step',
+      aliases: ['next', 'continue', 'move on', 'go on'],
+      action: () => handleNext(),
+    },
+    {
+      command: 'previous step',
+      aliases: ['back', 'go back', 'last step', 'previous'],
+      action: () => handlePrevious(),
+    },
+    {
+      command: 'clear checklist',
+      aliases: ['clear', 'clear all', 'reset checklist'],
+      action: () => handleClear(),
+    },
+    {
+      command: 'finish batch',
+      aliases: ['finish', 'complete', 'done', 'all done'],
+      action: () => {
+        if (currentStepIndex === workflow!.steps.length - 1) {
+          handleFinish();
+        } else {
+          Alert.alert('Not Ready', 'Complete all steps before finishing');
+        }
+      },
+    },
+  ];
+
+  const { isListening, recognizedText, error: voiceError, startListening, stopListening } =
+    useVoiceCommands(voiceCommands);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,19 +99,7 @@ export const StepScreen: FC = () => {
         setWorkflow(wf);
       }
     }
-  }, [batchId]);
-
-  useEffect(() => {
-    // Load photos for current step and check if photo is required
-    if (batch && workflow && workflow.steps[currentStepIndex]) {
-      const step = workflow.steps[currentStepIndex];
-      setPhotoRequired(step.description.includes('📸 Photo enabled'));
-      
-      // Load existing photos for this batch
-      const photos = getBatchPhotos(batchId!);
-      setStepPhotos(photos);
-    }
-  }, [currentStepIndex, batch, workflow]);
+  }, [batchId, currentStepIndex]);
 
   if (!batch || !workflow) {
     return (
@@ -157,100 +175,17 @@ export const StepScreen: FC = () => {
     currentStep.description
       .replace(/📋 Checklist:\n[\s\S]*?(?=\n\n|$)/, '')
       .replace(/🎥 Video:\s*https?:\/\/[^\s]+/, '')
-      .replace(/📸 Photo enabled/, '')
-      .replace(/📷 Reference photos:\s*\d+/, '')
       .trim(),
     batch.batchSizeMultiplier
   );
   
   const allItemsChecked = checklistItems.length > 0 && checklistItems.every(item => checkedItems.has(item));
   const isLastStep = currentStepIndex === workflow.steps.length - 1;
-  const hasRequiredPhoto = photoRequired && stepPhotos.length === 0;
-
-  const handleTakePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (status !== 'granted') {
-        haptics.error();
-        Alert.alert('Permission Required', 'Camera permission is needed to take photos');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const photoUri = result.assets[0].uri;
-        
-        // Save photo with batch context
-        const savedUri = await savePhoto(photoUri, {
-          batchId: batchId!,
-          workflowId: batch.workflowId,
-          stepId: currentStep.id,
-        });
-        
-        setStepPhotos([...stepPhotos, savedUri]);
-        haptics.success();
-        Alert.alert('Success', 'Photo captured!');
-      }
-    } catch (error) {
-      console.error('Photo capture error:', error);
-      haptics.error();
-      Alert.alert('Error', 'Failed to capture photo');
-    }
-  };
-
-  const handlePickPhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        haptics.error();
-        Alert.alert('Permission Required', 'Photo library permission is needed');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const photoUri = result.assets[0].uri;
-        
-        const savedUri = await savePhoto(photoUri, {
-          batchId: batchId!,
-          workflowId: batch.workflowId,
-          stepId: currentStep.id,
-        });
-        
-        setStepPhotos([...stepPhotos, savedUri]);
-        haptics.success();
-        Alert.alert('Success', 'Photo added!');
-      }
-    } catch (error) {
-      console.error('Photo picker error:', error);
-      haptics.error();
-      Alert.alert('Error', 'Failed to select photo');
-    }
-  };
 
   const handleNext = async () => {
     if (checklistItems.length > 0 && !allItemsChecked) {
       haptics.warning();
       Alert.alert('Incomplete', 'Please check all items before proceeding.');
-      return;
-    }
-
-    if (hasRequiredPhoto) {
-      haptics.warning();
-      Alert.alert('Photo Required', 'Please take a photo before proceeding.');
       return;
     }
 
@@ -262,7 +197,6 @@ export const StepScreen: FC = () => {
       setCurrentStepIndex(newIndex);
       await updateBatchStep(batchId!, newIndex);
       setCheckedItems(new Set());
-      setStepPhotos([]);
     }
   };
 
@@ -270,12 +204,6 @@ export const StepScreen: FC = () => {
     if (checklistItems.length > 0 && !allItemsChecked) {
       haptics.warning();
       Alert.alert('Incomplete', 'Please check all items before finishing.');
-      return;
-    }
-
-    if (hasRequiredPhoto) {
-      haptics.warning();
-      Alert.alert('Photo Required', 'Please take a photo before finishing.');
       return;
     }
 
@@ -320,7 +248,6 @@ export const StepScreen: FC = () => {
       setCurrentStepIndex(newIndex);
       await updateBatchStep(batchId!, newIndex);
       setCheckedItems(new Set());
-      setStepPhotos([]);
     }
   };
 
@@ -381,6 +308,29 @@ export const StepScreen: FC = () => {
       style={[styles.container, { backgroundColor: colors.background }]} 
       contentContainerStyle={styles.content}
     >
+      {/* Voice Command Status Banner */}
+      {isListening && (
+        <View style={[styles.voiceBanner, { backgroundColor: colors.success }]}>
+          <Text style={styles.voiceBannerText}>🎤 Listening...</Text>
+        </View>
+      )}
+
+      {recognizedText && !isListening && (
+        <View style={[styles.voiceBanner, { backgroundColor: colors.primary + '40' }]}>
+          <Text style={[styles.voiceBannerSmallText, { color: colors.text }]}>
+            Heard: "{recognizedText}"
+          </Text>
+        </View>
+      )}
+
+      {voiceError && (
+        <View style={[styles.voiceBanner, { backgroundColor: colors.error + '20' }]}>
+          <Text style={[styles.voiceBannerSmallText, { color: colors.error }]}>
+            {voiceError}
+          </Text>
+        </View>
+      )}
+
       {/* Header with Clear button */}
       <View style={styles.header}>
         <View style={styles.progressContainer}>
@@ -410,6 +360,19 @@ export const StepScreen: FC = () => {
         )}
       </View>
 
+      {/* Voice Command Button - Big and Easy to Press */}
+      <TouchableOpacity
+        onPress={isListening ? stopListening : startListening}
+        style={[
+          styles.voiceButton,
+          { backgroundColor: isListening ? colors.error : colors.success }
+        ]}
+      >
+        <Text style={styles.voiceButtonText}>
+          {isListening ? '🛑 Stop Voice Commands' : '🎤 Voice Commands'}
+        </Text>
+      </TouchableOpacity>
+
       {/* Step title */}
       <View style={styles.stepHeader}>
         <Text style={[styles.stepTitle, { color: colors.text }]}>{currentStep.title}</Text>
@@ -433,48 +396,6 @@ export const StepScreen: FC = () => {
         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Video Tutorial</Text>
           <YouTubeVideo url={youtubeUrl} />
-        </View>
-      )}
-
-      {/* Photo Capture */}
-      {photoRequired && (
-        <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.shadow }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Photo Documentation {hasRequiredPhoto && <Text style={{ color: colors.error }}>*</Text>}
-          </Text>
-          
-          {stepPhotos.length > 0 && (
-            <View style={styles.photoGrid}>
-              {stepPhotos.map((uri, index) => (
-                <Image
-                  key={index}
-                  source={{ uri }}
-                  style={styles.photoThumbnail}
-                />
-              ))}
-            </View>
-          )}
-
-          <View style={styles.photoButtons}>
-            <TouchableOpacity
-              style={[styles.photoButton, { backgroundColor: colors.primary }]}
-              onPress={handleTakePhoto}
-            >
-              <Text style={styles.photoButtonText}>📷 Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.photoButton, { backgroundColor: colors.success }]}
-              onPress={handlePickPhoto}
-            >
-              <Text style={styles.photoButtonText}>🖼️ Pick Photo</Text>
-            </TouchableOpacity>
-          </View>
-
-          {hasRequiredPhoto && (
-            <Text style={[styles.photoRequiredText, { color: colors.error }]}>
-              A photo is required for this step
-            </Text>
-          )}
         </View>
       )}
 
@@ -531,6 +452,18 @@ export const StepScreen: FC = () => {
         </View>
       )}
 
+      {/* Voice Commands Help */}
+      <View style={[styles.card, { backgroundColor: colors.surface + '80', shadowColor: colors.shadow }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text, fontSize: 14 }]}>
+          💡 Say These Commands:
+        </Text>
+        <Text style={[styles.voiceHelpText, { color: colors.textSecondary }]}>
+          • "Next step" or "Previous step"{'\n'}
+          • "Clear checklist"{'\n'}
+          • "Finish batch" (on last step)
+        </Text>
+      </View>
+
       {/* Navigation buttons */}
       <View style={styles.navigationContainer}>
         <TouchableOpacity
@@ -551,9 +484,9 @@ export const StepScreen: FC = () => {
             style={[
               styles.navButton, 
               { backgroundColor: colors.success },
-              ((!allItemsChecked && checklistItems.length > 0) || hasRequiredPhoto) && { backgroundColor: colors.disabled }
+              (!allItemsChecked && checklistItems.length > 0) && { backgroundColor: colors.disabled }
             ]}
-            disabled={(!allItemsChecked && checklistItems.length > 0) || hasRequiredPhoto}
+            disabled={!allItemsChecked && checklistItems.length > 0}
           >
             <Text style={styles.navButtonText}>Finish</Text>
           </TouchableOpacity>
@@ -563,9 +496,9 @@ export const StepScreen: FC = () => {
             style={[
               styles.navButton, 
               { backgroundColor: colors.primary },
-              ((!allItemsChecked && checklistItems.length > 0) || hasRequiredPhoto) && { backgroundColor: colors.disabled }
+              (!allItemsChecked && checklistItems.length > 0) && { backgroundColor: colors.disabled }
             ]}
-            disabled={(!allItemsChecked && checklistItems.length > 0) || hasRequiredPhoto}
+            disabled={!allItemsChecked && checklistItems.length > 0}
           >
             <Text style={styles.navButtonText}>Next</Text>
           </TouchableOpacity>
@@ -573,13 +506,13 @@ export const StepScreen: FC = () => {
       </View>
 
       {/* Progress indicator at bottom */}
-      {((!allItemsChecked && checklistItems.length > 0) || hasRequiredPhoto) && (
+      {(!allItemsChecked && checklistItems.length > 0) && (
         <View style={[styles.warningContainer, { 
           backgroundColor: colors.warning + '20',
           borderColor: colors.warning 
         }]}>
           <Text style={[styles.warningText, { color: colors.warning }]}>
-            {hasRequiredPhoto ? 'Take a photo to continue' : 'Check all items to continue'}
+            Check all items to continue
           </Text>
         </View>
       )}
@@ -594,6 +527,40 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, textAlign: 'center', marginBottom: 20 },
   backButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   backButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  voiceBanner: { 
+    padding: 12, 
+    borderRadius: 8, 
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  voiceBannerText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: '600',
+  },
+  voiceBannerSmallText: { 
+    fontSize: 14, 
+    fontWeight: '500',
+  },
+  voiceButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  voiceButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  voiceHelpText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   progressContainer: { flex: 1, marginRight: 12 },
   progressText: { fontSize: 14, marginBottom: 8, fontWeight: '600' },
@@ -608,12 +575,6 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: 16, marginBottom: 16, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   description: { fontSize: 16, lineHeight: 24 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  photoThumbnail: { width: 100, height: 100, borderRadius: 8 },
-  photoButtons: { flexDirection: 'row', gap: 12 },
-  photoButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-  photoButtonText: { color: 'white', fontSize: 14, fontWeight: '600' },
-  photoRequiredText: { fontSize: 12, marginTop: 8, fontWeight: '600', textAlign: 'center' },
   checklistItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   checkbox: { padding: 4 },
   checkboxBox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 12 },

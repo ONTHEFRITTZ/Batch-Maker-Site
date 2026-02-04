@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Switch, Image
+  ScrollView, Alert, Switch
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../contexts/ThemeContext';
 import { addWorkflow, getWorkflows, Workflow, Step } from '../../services/database';
-import { savePhoto, deletePhoto } from '../../services/photoStorage';
 
 interface ChecklistItem {
   text: string;
@@ -16,8 +14,6 @@ interface ChecklistItem {
 interface StepWithExtras extends Partial<Step> {
   checklistItems?: ChecklistItem[];
   youtubeUrl?: string;
-  photoEnabled?: boolean;
-  referencePhotos?: string[];
 }
 
 export default function WorkflowBuilderScreen() {
@@ -31,8 +27,6 @@ export default function WorkflowBuilderScreen() {
     timerMinutes: undefined,
     checklistItems: [],
     youtubeUrl: undefined,
-    photoEnabled: false,
-    referencePhotos: [],
   }]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -43,8 +37,6 @@ export default function WorkflowBuilderScreen() {
       timerMinutes: undefined,
       checklistItems: [],
       youtubeUrl: undefined,
-      photoEnabled: false,
-      referencePhotos: [],
     }]);
   };
 
@@ -83,65 +75,6 @@ export default function WorkflowBuilderScreen() {
     setSteps(newSteps);
   };
 
-  const addReferencePhoto = async (stepIndex: number) => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const imageUri = result.assets[0].uri;
-        const newSteps = [...steps];
-        
-        if (!newSteps[stepIndex].referencePhotos) {
-          newSteps[stepIndex].referencePhotos = [];
-        }
-        
-        newSteps[stepIndex].referencePhotos!.push(imageUri);
-        setSteps(newSteps);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
-    }
-  };
-
-  const takeReferencePhoto = async (stepIndex: number) => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const imageUri = result.assets[0].uri;
-        const newSteps = [...steps];
-        
-        if (!newSteps[stepIndex].referencePhotos) {
-          newSteps[stepIndex].referencePhotos = [];
-        }
-        
-        newSteps[stepIndex].referencePhotos!.push(imageUri);
-        setSteps(newSteps);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to take photo');
-    }
-  };
-
-  const removeReferencePhoto = (stepIndex: number, photoIndex: number) => {
-    const newSteps = [...steps];
-    if (newSteps[stepIndex].referencePhotos) {
-      newSteps[stepIndex].referencePhotos = newSteps[stepIndex].referencePhotos!.filter(
-        (_, i) => i !== photoIndex
-      );
-    }
-    setSteps(newSteps);
-  };
-
   const saveWorkflow = async () => {
     try {
       setIsSaving(true);
@@ -161,7 +94,7 @@ export default function WorkflowBuilderScreen() {
 
       const workflowId = workflowName.toLowerCase().replace(/\s+/g, '_') + '_custom_' + Date.now();
       
-      // Process photos and save them persistently
+      // Process steps
       const processedSteps: Step[] = [];
 
       for (let index = 0; index < steps.length; index++) {
@@ -177,43 +110,14 @@ export default function WorkflowBuilderScreen() {
           
           if (checklistText) {
             if (description) description += '\n\n';
-            description += `Checklist:\n${checklistText}`;
+            description += `📋 Checklist:\n${checklistText}`;
           }
         }
 
         // Add YouTube URL
         if (step.youtubeUrl && step.youtubeUrl.trim()) {
           if (description) description += '\n\n';
-          description += `Video: ${step.youtubeUrl.trim()}`;
-        }
-
-        // Add photo flag
-        if (step.photoEnabled) {
-          if (description) description += '\n\n';
-          description += 'Photo enabled';
-        }
-
-        // Save reference photos persistently
-        let savedPhotoUris: string[] = [];
-        if (step.referencePhotos && step.referencePhotos.length > 0) {
-          try {
-            savedPhotoUris = await Promise.all(
-              step.referencePhotos.map(photoUri =>
-                savePhoto(photoUri, {
-                  workflowId,
-                  stepId: `${workflowId}_step_${index + 1}`,
-                })
-              )
-            );
-          } catch (photoError) {
-            console.error('Error saving photos:', photoError);
-            Alert.alert('Warning', 'Some photos failed to save, but workflow was created');
-          }
-
-          if (savedPhotoUris.length > 0) {
-            if (description) description += '\n\n';
-            description += `Reference photos: ${savedPhotoUris.length}`;
-          }
+          description += `🎥 Video: ${step.youtubeUrl.trim()}`;
         }
 
         processedSteps.push({
@@ -250,7 +154,7 @@ export default function WorkflowBuilderScreen() {
 
       Alert.alert(
         'Success', 
-        `Custom workflow "${newWorkflow.name}" created with photos!`,
+        `Custom workflow "${newWorkflow.name}" created!`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -435,71 +339,8 @@ export default function WorkflowBuilderScreen() {
                 editable={!isSaving}
               />
 
-              {/* Photo Toggle */}
-              <View style={styles.toggleRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  Enable photo upload for this step
-                </Text>
-                <Switch
-                  value={step.photoEnabled || false}
-                  onValueChange={(value) => updateStep(stepIndex, 'photoEnabled', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={step.photoEnabled ? colors.primary : colors.textSecondary}
-                  disabled={isSaving}
-                />
-              </View>
-
-              {/* Reference Photos Section */}
-              <View style={styles.photoSection}>
-                <View style={styles.photoHeader}>
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                    Reference Photos
-                  </Text>
-                  <Text style={[styles.photoCount, { color: colors.textSecondary }]}>
-                    {step.referencePhotos?.length || 0} photos
-                  </Text>
-                </View>
-
-                <View style={styles.photoButtonsRow}>
-                  <TouchableOpacity
-                    style={[styles.photoButton, { backgroundColor: colors.primary }]}
-                    onPress={() => takeReferencePhoto(stepIndex)}
-                    disabled={isSaving}
-                  >
-                    <Text style={styles.photoButtonText}>Take Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.photoButton, { backgroundColor: colors.success }]}
-                    onPress={() => addReferencePhoto(stepIndex)}
-                    disabled={isSaving}
-                  >
-                    <Text style={styles.photoButtonText}>Pick Image</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {step.referencePhotos && step.referencePhotos.length > 0 && (
-                  <View style={styles.photoGrid}>
-                    {step.referencePhotos.map((photoUri, photoIndex) => (
-                      <View key={photoIndex} style={styles.photoThumbnailContainer}>
-                        <Image
-                          source={{ uri: photoUri }}
-                          style={styles.photoThumbnail}
-                        />
-                        <TouchableOpacity
-                          style={[styles.removePhotoButton, { backgroundColor: colors.error }]}
-                          onPress={() => removeReferencePhoto(stepIndex, photoIndex)}
-                          disabled={isSaving}
-                        >
-                          <Text style={styles.removePhotoButtonText}>×</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-
               <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-                Tip: Add ingredient amounts like "Flour: 500g" for batch scaling
+                💡 Tip: Add ingredient amounts like "Flour: 500g" for batch scaling
               </Text>
             </View>
           ))}
@@ -561,19 +402,7 @@ const styles = StyleSheet.create({
   checklistInput: { flex: 1, borderWidth: 1, borderRadius: 6, padding: 10, fontSize: 14 },
   removeItemButton: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6 },
   removeItemButtonText: { color: 'white', fontSize: 12, fontWeight: '600' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 16 },
-  photoSection: { marginBottom: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
-  photoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  photoCount: { fontSize: 12, fontStyle: 'italic' },
-  photoButtonsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  photoButton: { flex: 1, padding: 10, borderRadius: 8, alignItems: 'center' },
-  photoButtonText: { color: 'white', fontSize: 12, fontWeight: '600' },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoThumbnailContainer: { position: 'relative', marginBottom: 8 },
-  photoThumbnail: { width: 80, height: 80, borderRadius: 8 },
-  removePhotoButton: { position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  removePhotoButtonText: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  helperText: { fontSize: 12, fontStyle: 'italic' },
+  helperText: { fontSize: 12, fontStyle: 'italic', marginTop: 8 },
   actionBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', padding: 16, gap: 12, borderTopWidth: 1 },
   cancelButton: { flex: 1, padding: 16, borderRadius: 12, alignItems: 'center' },
   cancelButtonText: { fontSize: 16, fontWeight: '600' },
