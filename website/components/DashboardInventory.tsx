@@ -177,7 +177,7 @@ export default function Inventory({
 
   return (
     <>
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
           <h2 className="text-xl font-semibold text-gray-900">Inventory Management</h2>
           <div className="flex gap-3">
@@ -269,7 +269,7 @@ export default function Inventory({
       </div>
 
       {/* Shopping(order) List */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
           <h2 className="text-xl font-semibold text-gray-900">Order List</h2>
           <button onClick={() => setAddShoppingItemModalOpen(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -334,7 +334,7 @@ export default function Inventory({
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
         {inventoryTransactions.length === 0 ? (
           <p className="text-gray-400 text-sm italic text-center py-8">No transactions yet.</p>
@@ -453,7 +453,7 @@ export default function Inventory({
       {/* Inventory Transaction Modal */}
       {inventoryTransactionModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInventoryTransactionModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Record Inventory Transaction</h3>
             
             <select
@@ -520,7 +520,7 @@ export default function Inventory({
       {/* Add Shopping List Item Modal */}
       {addShoppingItemModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAddShoppingItemModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add to Order List</h3>
             
             <input

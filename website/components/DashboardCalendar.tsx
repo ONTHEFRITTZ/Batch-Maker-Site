@@ -245,7 +245,7 @@ export default function Calendar({
   return (
     <>
       {/* ── Calendar Grid ── */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
           <h2 className="text-xl font-semibold text-gray-900">Production Calendar</h2>
           <button onClick={() => setScheduleModalOpen(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -347,7 +347,7 @@ export default function Calendar({
 
       {/* ── Day Detail Panel ── (appears below calendar when a date is clicked) */}
       {selectedDayDate && (
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
+        <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
               📅 {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -479,11 +479,11 @@ export default function Calendar({
                       </div>
 
                       <div className="text-xs text-gray-500 space-y-0.5">
-                        {workflow && <div>📋 Workflow: {workflow.name}</div>}
-                        {batch.scheduled_time && <div>🕐 Time: {batch.scheduled_time}</div>}
-                        {batch.assigned_to && <div>👤 Assigned to: {batch.assigned_to_name || resolveAssigneeName(batch.assigned_to)}</div>}
-                        {batch.batch_size_multiplier !== 1 && <div>📦 Size: {batch.batch_size_multiplier}x</div>}
-                        {batch.notes && <div className="italic mt-1">💬 {batch.notes}</div>}
+                        {workflow && <div>📋orkflow: {workflow.name}</div>}
+                        {batch.scheduled_time && <div>Time: {batch.scheduled_time}</div>}
+                        {batch.assigned_to && <div>Assigned to: {batch.assigned_to_name || resolveAssigneeName(batch.assigned_to)}</div>}
+                        {batch.batch_size_multiplier !== 1 && <div>Size: {batch.batch_size_multiplier}x</div>}
+                        {batch.notes && <div className="italic mt-1">{batch.notes}</div>}
                       </div>
                     </div>
 
@@ -530,7 +530,7 @@ export default function Calendar({
       )}
 
       {/* ── Upcoming Scheduled Batches (sorted) ── */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Scheduled Batches</h2>
         {upcomingBatches.length === 0 ? (
           <p className="text-gray-400 text-sm italic text-center py-8">No upcoming batches scheduled.</p>
@@ -563,7 +563,7 @@ export default function Calendar({
       {/* ── Schedule Batch Modal ── */}
       {scheduleModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setScheduleModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Schedule Batch</h3>
 
             <select

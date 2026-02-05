@@ -222,7 +222,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
 
   if (!isPremium) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+      <div className="bg-white/90 rounded-xl p-6 shadow-sm text-center">
         <p className="text-gray-500">Schedule management is available for Premium accounts only.</p>
       </div>
     );
@@ -239,7 +239,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
           const isOnline = memberEntries.some(e => !e.clock_out);
 
           return (
-            <div key={member.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div key={member.id} className="bg-white/90 rounded-xl p-4 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`}></div>
@@ -257,7 +257,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       </div>
 
       {/* Shift Calendar */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
           <h2 className="text-xl font-semibold text-gray-900">Shift Schedule</h2>
           <button
@@ -339,7 +339,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
 
       {/* Day Detail Panel */}
       {selectedDayDate && (
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
+        <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
               {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -358,7 +358,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900 text-sm">{shift.assigned_to_name}</div>
                         <div className="text-xs text-gray-600">
-                          🕐 {shift.start_time} - {shift.end_time}
+                          {shift.start_time} - {shift.end_time}
                           {shift.role && ` • ${shift.role}`}
                         </div>
                         {shift.notes && <div className="text-xs text-gray-500 italic mt-1">{shift.notes}</div>}
@@ -468,7 +468,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       {/* Create Shift Modal */}
       {createShiftModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateShiftModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Create Shift</h3>
 
             <select value={shiftFormData.assigned_to} onChange={e => setShiftFormData({ ...shiftFormData, assigned_to: e.target.value })} className="w-full p-3 border border-gray-300 rounded-lg mb-4">

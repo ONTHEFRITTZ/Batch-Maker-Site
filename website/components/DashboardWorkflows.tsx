@@ -248,7 +248,7 @@ export default function Workflows({
     <>
       {/* Real-Time Active Sessions */}
       {isPremium && activeSessions.length > 0 && (
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+        <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Team Status</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeSessions.map(session => (
@@ -311,7 +311,7 @@ export default function Workflows({
           <h2 className="text-xl font-semibold text-gray-900">Active Work Sessions</h2>
           
           {Object.entries(batchesByUser).map(([userId, { session, batches: userBatches }]) => (
-            <div key={userId} className="bg-white rounded-xl p-6 shadow-sm">
+            <div key={userId} className="bg-white/90 rounded-xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
                 <div className={`w-3 h-3 rounded-full ${
                   session.status === 'working' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
@@ -383,7 +383,7 @@ export default function Workflows({
       )}
 
       {/* All Workflows */}
-      <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
           <h2 className="text-xl font-semibold text-gray-900">All Workflows</h2>
           <Link href="/workflows/create" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -478,7 +478,7 @@ export default function Workflows({
       {/* Assign Workflow Modal */}
       {assignWorkflowModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAssignWorkflowModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Assign Workflow</h3>
             
             <p className="mb-4 text-gray-500">

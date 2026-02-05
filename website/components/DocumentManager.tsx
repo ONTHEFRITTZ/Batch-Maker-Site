@@ -356,7 +356,7 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
 
       {/* Admin View - All Documents */}
       {isAdmin && (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white/90 rounded-xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Document Templates</h2>
@@ -436,7 +436,7 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
 
       {/* User View - Assigned Documents */}
       {userId && (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white/90 rounded-xl p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Assigned Documents</h2>
 
           {userDocuments.length === 0 ? (
@@ -509,7 +509,7 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
           onClick={() => setShowUploadModal(false)}
         >
           <div 
-            className="bg-white rounded-xl p-8 max-w-md w-full"
+            className="bg-white/90 rounded-xl p-8 max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Document</h2>

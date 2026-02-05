@@ -79,7 +79,7 @@ export default function AccountPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 py-4">
+      <header className="bg-white/90 border-b border-gray-200 py-4">
         <div className="max-w-4xl mx-auto px-6 flex justify-between items-center">
           <h1 className="text-2xl font-semibold text-gray-900">Account</h1>
           {isPremium && (
@@ -95,7 +95,7 @@ export default function AccountPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Account Info */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+        <div className="bg-white/90 rounded-xl p-6 shadow-sm mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
           
           <div className="space-y-4">
@@ -149,7 +149,7 @@ export default function AccountPage() {
         )}
 
         {/* Actions */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white/90 rounded-xl p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Actions</h2>
           
           <div className="space-y-3">
@@ -186,7 +186,7 @@ export default function AccountPage() {
           onClick={() => !deleting && setShowDeleteConfirm(false)}
         >
           <div 
-            className="bg-white rounded-xl p-8 max-w-md w-full"
+            className="bg-white/90 rounded-xl p-8 max-w-md w-full"
             onClick={e => e.stopPropagation()}
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">Delete Account?</h3>

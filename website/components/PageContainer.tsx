@@ -19,7 +19,7 @@ export default function PageContainer({
         <Navbar />
 
         <main className="max-w-7xl mx-auto px-6 py-12">
-          <div className="bg-white rounded-3xl shadow-lg p-8 md:p-12">
+          <div className="bg-white/90 rounded-3xl shadow-lg p-8 md:p-12">
             <div className="text-center mb-10">
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
                 {title}

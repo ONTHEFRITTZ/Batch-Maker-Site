@@ -425,7 +425,7 @@ export default function Overview({
           onClick={() => setAddShoppingItemModalOpen(false)}
         >
           <div 
-            className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" 
+            className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" 
             style={{ zIndex: 10000, position: 'relative' }}
             onClick={(e) => e.stopPropagation()}
           >
