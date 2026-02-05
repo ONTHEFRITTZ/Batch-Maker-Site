@@ -11,6 +11,7 @@ interface Document {
   is_auto_send: boolean;
   category?: string;
   created_at: string;
+  created_by?: string;
 }
 
 interface UserDocument {
@@ -25,7 +26,7 @@ interface UserDocument {
 }
 
 interface DocumentManagerProps {
-  userId?: string; // If viewing a specific user's documents
+  userId?: string;
   isAdmin?: boolean;
 }
 
@@ -42,6 +43,7 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -51,20 +53,31 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
   }, [userId]);
 
   async function fetchDocuments() {
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setError('Not authenticated');
+        return;
+      }
 
-      const { data, error } = await supabase
+      // Fixed: Query documents created by current user
+      const { data, error: fetchError } = await supabase
         .from('documents')
         .select('*')
-        .eq('business_id', session.user.id)
+        .eq('created_by', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) {
+        console.error('Fetch error:', fetchError);
+        setError(`Failed to load documents: ${fetchError.message}`);
+        return;
+      }
+      
       setDocuments(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching documents:', error);
+      setError(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -73,8 +86,9 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
   async function fetchUserDocuments() {
     if (!userId) return;
 
+    setError(null);
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('user_documents')
         .select(`
           *,
@@ -83,10 +97,16 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) {
+        console.error('User documents fetch error:', fetchError);
+        setError(`Failed to load user documents: ${fetchError.message}`);
+        return;
+      }
+      
       setUserDocuments(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user documents:', error);
+      setError(`Error: ${error.message}`);
     }
   }
 
@@ -97,43 +117,77 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
     }
 
     setUploading(true);
+    setError(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
 
-      // Upload file to Supabase Storage
+      console.log('Starting upload...', {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type
+      });
+
+      // Create unique file name
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `documents/${session.user.id}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      // Upload file to Supabase Storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('business-documents')
-        .upload(filePath, selectedFile);
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      console.log('File uploaded successfully:', uploadData);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('business-documents')
         .getPublicUrl(filePath);
 
-      // Create document record
-      const { error: dbError } = await supabase
-        .from('documents')
-        .insert({
-          business_id: session.user.id,
-          name: uploadForm.name,
-          description: uploadForm.description,
-          file_url: publicUrl,
-          file_type: selectedFile.type,
-          file_size: selectedFile.size,
-          is_auto_send: uploadForm.is_auto_send,
-          category: uploadForm.category,
-          created_by: session.user.id,
-        });
+      console.log('Public URL:', publicUrl);
 
-      if (dbError) throw dbError;
+      // Create document record
+      const documentData = {
+        name: uploadForm.name,
+        description: uploadForm.description || null,
+        file_url: publicUrl,
+        file_type: selectedFile.type,
+        file_size: selectedFile.size,
+        is_auto_send: uploadForm.is_auto_send,
+        category: uploadForm.category,
+        created_by: session.user.id,
+      };
+
+      console.log('Creating document record:', documentData);
+
+      const { error: dbError, data: insertedDoc } = await supabase
+        .from('documents')
+        .insert(documentData)
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        // Try to clean up uploaded file
+        await supabase.storage
+          .from('business-documents')
+          .remove([filePath]);
+        throw new Error(`Database error: ${dbError.message}`);
+      }
+
+      console.log('Document created successfully:', insertedDoc);
 
       alert('Document uploaded successfully!');
       setShowUploadModal(false);
@@ -146,48 +200,76 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
       setSelectedFile(null);
       
       await fetchDocuments();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading document:', error);
-      alert('Failed to upload document');
+      setError(error.message);
+      alert(`Failed to upload document: ${error.message}`);
     } finally {
       setUploading(false);
     }
   }
 
   async function handleToggleAutoSend(documentId: string, currentValue: boolean) {
+    setError(null);
     try {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('documents')
         .update({ is_auto_send: !currentValue })
         .eq('id', documentId);
 
-      if (error) throw error;
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
 
       setDocuments(documents.map(doc => 
         doc.id === documentId ? { ...doc, is_auto_send: !currentValue } : doc
       ));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling auto-send:', error);
-      alert('Failed to update document');
+      setError(error.message);
+      alert(`Failed to update document: ${error.message}`);
     }
   }
 
   async function handleDeleteDocument(documentId: string) {
     if (!confirm('Are you sure you want to delete this document?')) return;
 
+    setError(null);
     try {
-      const { error } = await supabase
+      // First, get the document to find the file URL
+      const doc = documents.find(d => d.id === documentId);
+      
+      // Delete from database
+      const { error: deleteError } = await supabase
         .from('documents')
         .delete()
         .eq('id', documentId);
 
-      if (error) throw error;
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+
+      // Try to delete file from storage (best effort)
+      if (doc?.file_url) {
+        try {
+          const url = new URL(doc.file_url);
+          const pathParts = url.pathname.split('/');
+          const filePath = pathParts.slice(-3).join('/'); // Get last 3 parts: documents/userId/filename
+          
+          await supabase.storage
+            .from('business-documents')
+            .remove([filePath]);
+        } catch (storageError) {
+          console.warn('Could not delete file from storage:', storageError);
+        }
+      }
 
       setDocuments(documents.filter(doc => doc.id !== documentId));
       alert('Document deleted');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting document:', error);
-      alert('Failed to delete document');
+      setError(error.message);
+      alert(`Failed to delete document: ${error.message}`);
     }
   }
 
@@ -195,6 +277,7 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
     const file = await promptFileUpload();
     if (!file) return;
 
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -208,14 +291,14 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
         .from('business-documents')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(uploadError.message);
 
       const { data: { publicUrl } } = supabase.storage
         .from('business-documents')
         .getPublicUrl(filePath);
 
       // Update user_document record
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('user_documents')
         .update({
           status: 'completed',
@@ -224,13 +307,14 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
         })
         .eq('id', userDocumentId);
 
-      if (error) throw error;
+      if (updateError) throw new Error(updateError.message);
 
       await fetchUserDocuments();
       alert('Document marked as completed');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking document complete:', error);
-      alert('Failed to mark document as completed');
+      setError(error.message);
+      alert(`Failed to mark document as completed: ${error.message}`);
     }
   }
 
@@ -263,6 +347,13 @@ export default function DocumentManager({ userId, isAdmin = false }: DocumentMan
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-red-800">⚠️ {error}</p>
+        </div>
+      )}
+
       {/* Admin View - All Documents */}
       {isAdmin && (
         <div className="bg-white rounded-xl p-6 shadow-sm">

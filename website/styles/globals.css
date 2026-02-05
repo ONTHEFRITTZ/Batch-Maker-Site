@@ -113,3 +113,49 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* ========================================
+   MODAL Z-INDEX FIXES - ENSURES MODALS APPEAR ON TOP
+   ======================================== */
+
+/* Modal overlays - Must be higher than header (z-50) and tabs (z-40) */
+.modal-overlay,
+[data-modal-overlay] {
+  z-index: 9999 !important;
+}
+
+/* Modal content - Even higher than overlay */
+.modal-content,
+[data-modal-content] {
+  z-index: 10000 !important;
+}
+
+/* Dropdowns and popovers - Between content and headers */
+.dropdown,
+[data-dropdown] {
+  z-index: 1000 !important;
+}
+
+/* Ensure headers stay below modals but above content */
+header,
+nav,
+.header,
+.navbar {
+  z-index: 50 !important;
+}
+
+/* Sticky tabs stay below headers */
+.tabs,
+.tab-container {
+  z-index: 40 !important;
+}
+
+/* Z-INDEX HIERARCHY REFERENCE:
+   10000+ = Modals and modal content
+   9999   = Modal overlays
+   1000   = Dropdowns and popovers
+   50     = Fixed headers and navigation
+   40     = Sticky tabs
+   1-10   = Regular content
+   0      = Base layer
+*/

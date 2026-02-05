@@ -46,11 +46,17 @@ export default function Account() {
       setUser(session.user);
 
       // Fetch profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        alert('Failed to load profile data. Please refresh the page.');
+        return;
+      }
 
       setProfile(profileData);
 
@@ -60,6 +66,7 @@ export default function Account() {
       }
     } catch (error) {
       console.error('Error loading user data:', error);
+      alert('Failed to load user data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -68,21 +75,48 @@ export default function Account() {
   async function handleSaveBusinessSettings() {
     setSaving(true);
     try {
-      const { error } = await supabase
+      // First, check if the profile exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (checkError) {
+        console.error('Profile check error:', checkError);
+        throw new Error('Could not verify profile. Please try again.');
+      }
+
+      // Update the profile with business settings
+      const { data, error } = await supabase
         .from('profiles')
         .update({ 
           business_settings: businessSettings,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
 
+      // Update local state
+      setProfile({ ...profile, business_settings: businessSettings });
       alert('Business settings saved successfully!');
       setEditMode(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving business settings:', error);
-      alert('Failed to save business settings');
+      
+      // More helpful error messages
+      if (error.code === '42501') {
+        alert('Permission denied. Please check your account permissions.');
+      } else if (error.message?.includes('JWT')) {
+        alert('Session expired. Please refresh the page and try again.');
+      } else {
+        alert(`Failed to save business settings: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -96,15 +130,19 @@ export default function Account() {
           [field]: value,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
 
       setProfile({ ...profile, [field]: value });
       alert('Profile updated successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile');
+      alert(`Failed to update profile: ${error.message || 'Unknown error'}`);
     }
   }
 
@@ -233,14 +271,14 @@ export default function Account() {
             onClick={() => setActiveTab('profile')}
             style={activeTab === 'profile' ? styles.tabActive : styles.tab}
           >
-            👤 Profile
+            Profile
           </button>
           {isPremium && (
             <button
               onClick={() => setActiveTab('business')}
               style={activeTab === 'business' ? styles.tabActive : styles.tab}
             >
-              🏢 Business
+              Business
             </button>
           )}
           {isPremium && (
@@ -533,7 +571,7 @@ export default function Account() {
 
             {/* Danger Zone */}
             <div style={styles.dangerCard}>
-              <h2 style={styles.dangerTitle}>⚠️ Danger Zone</h2>
+              <h2 style={styles.dangerTitle}>Danger Zone</h2>
               
               <div style={styles.dangerSection}>
                 <div>
