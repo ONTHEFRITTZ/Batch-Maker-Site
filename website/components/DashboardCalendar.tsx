@@ -541,7 +541,7 @@ export default function Calendar({
                 <div className="flex-1">
                   <div className="font-medium text-gray-900 mb-1">{batch.name}</div>
                   <div className="text-sm text-gray-500">
-                    📅 {new Date(batch.scheduled_date + 'T00:00:00').toLocaleDateString()}
+                    {new Date(batch.scheduled_date + 'T00:00:00').toLocaleDateString()}
                     {batch.scheduled_time && ` at ${batch.scheduled_time}`}
                     {batch.assigned_to && ` • 👤 ${batch.assigned_to_name || resolveAssigneeName(batch.assigned_to)}`}
                     {` • ${batch.batch_size_multiplier}x`}

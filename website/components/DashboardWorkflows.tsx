@@ -308,7 +308,7 @@ export default function Workflows({
       {/* Active Batches - Organized by User */}
       {Object.keys(batchesByUser).length > 0 && (
         <div className="mb-6 space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900">🔨 Active Work Sessions</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Active Work Sessions</h2>
           
           {Object.entries(batchesByUser).map(([userId, { session, batches: userBatches }]) => (
             <div key={userId} className="bg-white rounded-xl p-6 shadow-sm">
@@ -385,7 +385,7 @@ export default function Workflows({
       {/* All Workflows */}
       <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-          <h2 className="text-xl font-semibold text-gray-900">📋 All Workflows</h2>
+          <h2 className="text-xl font-semibold text-gray-900">All Workflows</h2>
           <Link href="/workflows/create" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
             + Create Workflow
           </Link>

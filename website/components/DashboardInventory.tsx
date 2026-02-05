@@ -182,7 +182,7 @@ export default function Inventory({
           <h2 className="text-xl font-semibold text-gray-900">Inventory Management</h2>
           <div className="flex gap-3">
             <button onClick={() => setInventoryTransactionModalOpen(true)} className="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
-              📝 Record Transaction
+              Record Transaction
             </button>
             <button onClick={() => setAddInventoryModalOpen(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
               + Add Item
@@ -282,7 +282,7 @@ export default function Inventory({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">📋 Pending</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Pending</h3>
               <div className="space-y-3">
                 {shoppingList.filter(i => i.status === 'pending').map(item => (
                   <div key={item.id} className={`bg-white p-4 rounded-lg border-l-4 ${

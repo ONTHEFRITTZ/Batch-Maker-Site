@@ -109,7 +109,7 @@ export default function AccountPage() {
               <div>
                 {isPremium ? (
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium text-sm">
-                    ⭐ Premium Account
+                    Premium Account
                   </span>
                 ) : (
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">

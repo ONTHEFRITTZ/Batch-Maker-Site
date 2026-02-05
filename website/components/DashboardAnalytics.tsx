@@ -52,7 +52,7 @@ export default function Analytics({
   return (
     <>
       <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">📊 Advanced Analytics</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Advanced Analytics</h2>
         
         <h3 className="text-base font-semibold text-gray-900 mt-6 mb-4">Top 5 Workflows by Completion</h3>
         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -74,7 +74,7 @@ export default function Analytics({
       </div>
 
       <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">💰 Revenue & Profitability</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Revenue & Profitability</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-2">All-Time Revenue</div>
@@ -104,7 +104,7 @@ export default function Analytics({
       </div>
 
       <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">📦 Inventory Insights</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Inventory Insights</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-2">Total Items</div>
@@ -152,7 +152,7 @@ export default function Analytics({
       </div>
 
       <div className="bg-white rounded-xl p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">📅 Production Trends</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Production Trends</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-2">Batches This Week</div>

@@ -247,8 +247,8 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
                 </div>
               </div>
               <div className="text-sm text-gray-600 space-y-1">
-                <div>📅 {memberShifts.length} upcoming shifts</div>
-                <div>🕐 {totalHours.toFixed(1)}h this month</div>
+                <div> {memberShifts.length} upcoming shifts</div>
+                <div> {totalHours.toFixed(1)}h this month</div>
                 {isOnline && <div className="text-green-600 font-medium">● Clocked In</div>}
               </div>
             </div>
@@ -342,7 +342,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              📅 {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </h2>
             <button onClick={() => setSelectedDayDate(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
           </div>
@@ -435,7 +435,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
                         {entry.total_hours && <div className="text-xs text-gray-600">Total: {entry.total_hours.toFixed(2)}h</div>}
                         {entry.edited_by && (
                           <div className="text-xs text-orange-600 mt-1">
-                            ✏️ Edited — {entry.edit_reason}
+                            Edited — {entry.edit_reason}
                           </div>
                         )}
                       </div>

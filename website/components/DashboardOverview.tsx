@@ -196,7 +196,7 @@ export default function Overview({
           <Link href="/upgrade" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-yellow-500 bg-gradient-to-br from-yellow-50 to-orange-50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-600">Upgrade</h3>
-              <span className="text-2xl">⭐</span>
+              <span className="text-2xl"></span>
             </div>
             <div className="text-sm font-semibold text-gray-900 mb-1">Go Premium</div>
             <div className="text-xs text-yellow-700">Unlock team features →</div>

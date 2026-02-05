@@ -286,14 +286,14 @@ export default function Account() {
               onClick={() => setActiveTab('documents')}
               style={activeTab === 'documents' ? styles.tabActive : styles.tab}
             >
-              📄 Documents
+              Documents
             </button>
           )}
           <button
             onClick={() => setActiveTab('security')}
             style={activeTab === 'security' ? styles.tabActive : styles.tab}
           >
-            🔒 Security
+            Security
           </button>
         </div>
       </div>
@@ -420,7 +420,7 @@ export default function Account() {
                 Download a copy of all your data including workflows, batches, and reports.
               </p>
               <button onClick={handleExportData} style={styles.primaryButton}>
-                📊 Export My Data (JSON)
+                Export My Data (JSON)
               </button>
             </div>
           </>
@@ -533,7 +533,7 @@ export default function Account() {
         {activeTab === 'documents' && isPremium && (
           <div>
             <div style={styles.infoBox}>
-              <h3 style={styles.infoTitle}>📄 Document Management</h3>
+              <h3 style={styles.infoTitle}>Document Management</h3>
               <p style={styles.infoText}>
                 Upload document templates that can be automatically sent to new team members 
                 during onboarding (W-4, I-9, NDAs, training materials, etc.)
