@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
 
 interface TeamMember {
   id: string;

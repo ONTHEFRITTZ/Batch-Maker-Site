@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import DocumentManager from './DocumentManager';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
 
 interface BusinessSettings {
   business_name: string;

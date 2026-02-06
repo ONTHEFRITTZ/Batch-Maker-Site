@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { DashboardProps } from '../lib/dashboard-types';
-import { supabase } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 export default function Overview({
   workflows,

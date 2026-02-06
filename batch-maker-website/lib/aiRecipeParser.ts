@@ -2,7 +2,10 @@
  * aiRecipeParser.ts (Web Version)
  */
 
-import { supabase } from './supabase';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import Link from 'next/link';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
 
 export default function AccountPage() {
   const [user, setUser] = useState<any>(null);

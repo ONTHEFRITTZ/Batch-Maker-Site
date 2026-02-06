@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 interface Document {
   id: string;

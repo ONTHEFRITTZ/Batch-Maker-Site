@@ -1,4 +1,7 @@
 import type { DashboardProps } from '../lib/dashboard-types';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
 
 export default function Analytics({
   batchReports,

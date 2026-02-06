@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { DashboardProps } from '../lib/dashboard-types';
-import { supabase } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 export default function Inventory({
   user,

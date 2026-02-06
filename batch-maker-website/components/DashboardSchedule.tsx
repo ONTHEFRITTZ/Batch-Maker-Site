@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import type { DashboardProps } from '../lib/dashboard-types';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 interface Shift {
   id: string;

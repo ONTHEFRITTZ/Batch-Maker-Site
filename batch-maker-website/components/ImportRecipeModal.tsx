@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { parseRecipe, parseRecipeFromUrl, toWorkflowInsert, toBatchTemplateInsert, type ParsedRecipe } from '../lib/aiRecipeParser';
-import { supabase } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 interface ImportRecipeModalProps {
   isOpen: boolean;

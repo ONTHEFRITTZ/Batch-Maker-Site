@@ -1,8 +1,11 @@
 // pages/account.tsx
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import PremiumAccountPage from '../components/PremiumAccountPage';
 import FreeAccountPage from '../components/FreeAccountPage';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
+
 
 export default function AccountPage() {
   const [user, setUser] = useState<any>(null);

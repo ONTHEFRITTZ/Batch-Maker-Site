@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { DashboardProps, ActiveSession } from '../lib/dashboard-types';
-import { supabase } from '../lib/supabase';
 import ImportRecipeModal from './ImportRecipeModal';
+import { getSupabaseClient } from '../lib/supabase';
+
+const supabase = getSupabaseClient();
 
 export default function Workflows({
   user,
