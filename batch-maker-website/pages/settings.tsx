@@ -99,13 +99,43 @@ export default function DashboardSettings() {
   }
 
   async function fetchTeamMembers(userId: string) {
-    const { data, error } = await supabase
-      .from('network_member_roles')
-      .select('*, profiles:user_id(device_name, email)')
-      .eq('owner_id', userId);
+  // Fetch team members
+  const { data: members, error } = await supabase
+    .from('network_member_roles')
+    .select('*')
+    .eq('owner_id', userId);
 
-    if (!error && data) setTeamMembers(data);
+  if (error) {
+    console.error('Error fetching team members:', error);
+    setTeamMembers([]);
+    return;
   }
+
+  if (!members || members.length === 0) {
+    setTeamMembers([]);
+    return;
+  }
+
+  // Fetch profiles separately
+  const userIds = members.map(m => m.user_id).filter(Boolean);
+  
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, device_name, email')
+      .in('id', userIds);
+
+    // Merge profiles into members
+    const membersWithProfiles = members.map(member => ({
+      ...member,
+      profiles: profiles?.find(p => p.id === member.user_id)
+    }));
+
+    setTeamMembers(membersWithProfiles);
+  } else {
+    setTeamMembers(members);
+  }
+}
 
   async function fetchInvitations(userId: string) {
     const { data, error } = await supabase

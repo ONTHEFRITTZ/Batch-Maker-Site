@@ -46,7 +46,7 @@ export default function Layout() {
     <ThemeProvider>
       <Stack
         screenOptions={{
-          header: ({ navigation }) => (
+          header: ({ navigation }: any) => (
             <CustomHeader canGoBack={navigation.canGoBack()} />
           ),
         }}
