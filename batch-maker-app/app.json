@@ -65,7 +65,14 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow Batch Maker to use your microphone for voice commands.",
+          "speechRecognitionPermission": "Allow Batch Maker to recognize your voice commands."
+        }
+      ]
     ],
     "extra": {
       "router": {
