@@ -72,7 +72,8 @@
           "microphonePermission": "Allow Batch Maker to use your microphone for voice commands.",
           "speechRecognitionPermission": "Allow Batch Maker to recognize your voice commands."
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "extra": {
       "router": {
