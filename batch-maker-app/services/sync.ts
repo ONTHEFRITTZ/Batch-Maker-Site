@@ -37,10 +37,10 @@ class SyncService {
       storedId = uuidv4(); // FIXED: Generate proper UUID
       await AsyncStorage.setItem(DEVICE_ID_KEY, storedId);
     }
-    this.deviceId = storedId;
+    this.deviceId = storedId; // TypeScript now knows this is a string
 
     const storedName = await AsyncStorage.getItem(DEVICE_NAME_KEY);
-    this.deviceName = storedName || 'Unnamed Device';
+    this.deviceName = storedName ?? 'Unnamed Device'; // FIXED: Use nullish coalescing
   }
 
   async setDeviceName(name: string): Promise<void> {
