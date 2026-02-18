@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Nav, Footer } from '../components/MarketingLayout'
 
 export default function Pricing() {
   const features = [
@@ -63,37 +64,16 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Nav />
 
-      {/* Nav */}
-      <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/assets/images/batch-maker-alpha.png" alt="Batch Maker" className="h-10" />
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Support</Link>
-            <Link href="/privacy-policy" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Privacy</Link>
-            <Link href="/terms-of-service" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Terms</Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Sign In</Link>
-            <Link href="/register" className="text-sm bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Get Started Free
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Header */}
       <section className="py-16 px-6 text-center bg-gray-50 border-b border-gray-100">
         <h1 className="text-4xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h1>
         <p className="text-gray-500 text-lg">30-day free trial · Cancel anytime · No hidden fees</p>
       </section>
 
-      {/* Pricing + Features */}
       <section className="py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-start">
-
-            {/* Price box */}
             <div className="bg-white border-2 border-[#A8C5B5] rounded-2xl p-8 shadow-lg">
               <div className="inline-block bg-[#A8C5B5]/20 text-[#5a8a74] text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
                 Premium
@@ -103,7 +83,6 @@ export default function Pricing() {
                 <span className="text-gray-500 text-lg">/month</span>
               </div>
               <p className="text-gray-500 text-sm mb-8">after your 30-day free trial</p>
-
               <ul className="space-y-3 mb-8">
                 {included.map((item) => (
                   <li key={item} className="flex items-center gap-3 text-gray-700 text-sm">
@@ -112,20 +91,12 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-
-              <Link
-                href="/register"
-                className="block w-full bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white py-3 rounded-xl font-semibold transition-colors text-base text-center"
-              >
+              <Link href="/register" className="block w-full bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white py-3 rounded-xl font-semibold transition-colors text-base text-center">
                 Start Free Trial
               </Link>
-
-              <p className="text-xs text-gray-400 text-center mt-4">
-                Managed via Apple App Store or Google Play
-              </p>
+              <p className="text-xs text-gray-400 text-center mt-4">Managed via Apple App Store or Google Play</p>
             </div>
 
-            {/* Feature highlights */}
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900">Everything included</h2>
               {features.map((group) => (
@@ -149,7 +120,6 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Reassurance strip */}
       <section className="py-12 px-6 bg-gray-50 border-t border-gray-100">
         <div className="max-w-3xl mx-auto grid md:grid-cols-3 gap-8 text-center">
           {[
@@ -166,20 +136,7 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <span className="text-sm text-gray-400">© {new Date().getFullYear()} Batch Maker</span>
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
-            <Link href="/support" className="hover:text-gray-700 transition-colors">Support</Link>
-            <Link href="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-            <Link href="/subscription-policy" className="hover:text-gray-700 transition-colors">Subscription Policy</Link>
-            <Link href="/terms-of-service" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-            <a href="mailto:batch.maker.app@gmail.com" className="hover:text-gray-700 transition-colors">Contact</a>
-          </div>
-        </div>
-      </footer>
-
+      <Footer />
     </div>
   )
 }

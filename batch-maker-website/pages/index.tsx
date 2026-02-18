@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
+import { Nav, Footer } from '../components/MarketingLayout'
 import { getSupabaseClient } from '../lib/supabase'
 
 const supabase = getSupabaseClient()
@@ -31,25 +32,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-
-      {/* Nav */}
-      <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/assets/images/batch-maker-alpha.png" alt="Batch Maker" className="h-10" />
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Pricing</Link>
-            <Link href="/support" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Support</Link>
-            <Link href="/privacy-policy" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Privacy</Link>
-            <Link href="/terms-of-service" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Terms</Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Sign In</Link>
-            <Link href="/register" className="text-sm bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Get Started Free
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Nav />
 
       {/* Hero */}
       <section
@@ -85,9 +68,7 @@ export default function Home() {
       {/* Features */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            Everything you need to run production
-          </h2>
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Everything you need to run production</h2>
           <p className="text-center text-gray-500 mb-14 max-w-xl mx-auto">
             Built for bakeries, kitchens, and food manufacturers who need more than a recipe binder.
           </p>
@@ -119,14 +100,7 @@ export default function Home() {
             <div className="text-5xl font-bold text-gray-900 mb-1">$25</div>
             <div className="text-gray-500 mb-6">per month</div>
             <ul className="text-left space-y-3 mb-8 max-w-xs mx-auto">
-              {[
-                '30-day free trial',
-                'Unlimited workflows',
-                'Inventory & scheduling',
-                'Analytics dashboard',
-                'Multi-location support',
-                'Cancel anytime',
-              ].map((item) => (
+              {['30-day free trial', 'Unlimited workflows', 'Inventory & scheduling', 'Analytics dashboard', 'Multi-location support', 'Cancel anytime'].map((item) => (
                 <li key={item} className="flex items-center gap-3 text-gray-700 text-sm">
                   <span className="text-[#A8C5B5] font-bold">✓</span>
                   {item}
@@ -141,24 +115,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-gray-50 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <img src="/assets/images/batch-maker-alpha.png" alt="Batch Maker" className="h-8" />
-            <span className="text-sm text-gray-500">© {new Date().getFullYear()} Batch Maker</span>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
-            <Link href="/pricing" className="hover:text-gray-700 transition-colors">Pricing</Link>
-            <Link href="/support" className="hover:text-gray-700 transition-colors">Support</Link>
-            <Link href="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-            <Link href="/subscription-policy" className="hover:text-gray-700 transition-colors">Subscription Policy</Link>
-            <Link href="/terms-of-service" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-            <a href="mailto:batch.maker.app@gmail.com" className="hover:text-gray-700 transition-colors">Contact</a>
-          </div>
-        </div>
-      </footer>
-
+      <Footer />
     </div>
   )
 }

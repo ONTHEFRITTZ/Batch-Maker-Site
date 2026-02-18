@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { useState } from 'react'
+import { Nav, Footer } from '../components/MarketingLayout'
 
 export default function Support() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
@@ -13,31 +13,13 @@ export default function Support() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Nav />
 
-      {/* Nav */}
-      <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/assets/images/batch-maker-alpha.png" alt="Batch Maker" className="h-10" />
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Pricing</Link>
-            <Link href="/privacy-policy" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Privacy</Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Sign In</Link>
-            <Link href="/register" className="text-sm bg-[#A8C5B5] hover:bg-[#8FB5A0] text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Get Started Free
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Header */}
       <section className="py-16 px-6 text-center bg-gray-50 border-b border-gray-100">
         <h1 className="text-4xl font-bold text-gray-900 mb-3">Support</h1>
         <p className="text-gray-500">We're here to help you get the most out of Batch Maker</p>
       </section>
 
-      {/* Support options */}
       <section className="py-12 px-6 border-b border-gray-100">
         <div className="max-w-4xl mx-auto grid md:grid-cols-4 gap-6">
           {[
@@ -55,11 +37,8 @@ export default function Support() {
         </div>
       </section>
 
-      {/* Contact form + info */}
       <section className="py-16 px-6">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
-
-          {/* Form */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a message</h2>
             {submitted ? (
@@ -113,7 +92,6 @@ export default function Support() {
             )}
           </div>
 
-          {/* Info */}
           <div className="space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Need help?</h2>
@@ -121,18 +99,15 @@ export default function Support() {
                 Email us anytime at{' '}
                 <a href="mailto:batch.maker.app@gmail.com" className="text-[#A8C5B5] hover:text-[#8FB5A0] font-medium">
                   batch.maker.app@gmail.com
-                </a>
-                . We do our best to respond as quickly as possible.
+                </a>. We do our best to respond as quickly as possible.
               </p>
             </div>
-
             <div className="border-t border-gray-100 pt-8">
               <h3 className="font-semibold text-gray-900 mb-2">Feedback & Feature Requests</h3>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Batch Maker is built for real kitchens. If something feels clunky or missing, let us know — your feedback genuinely helps shape the product.
               </p>
             </div>
-
             <div className="border-t border-gray-100 pt-8">
               <h3 className="font-semibold text-gray-900 mb-2">Account & Billing</h3>
               <p className="text-gray-500 text-sm leading-relaxed">
@@ -140,23 +115,10 @@ export default function Support() {
               </p>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-gray-50 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <span className="text-sm text-gray-400">© {new Date().getFullYear()} Batch Maker</span>
-          <div className="flex gap-6 text-sm text-gray-400">
-            <Link href="/pricing" className="hover:text-gray-700">Pricing</Link>
-            <Link href="/privacy-policy" className="hover:text-gray-700">Privacy Policy</Link>
-            <Link href="/subscription-policy" className="hover:text-gray-700">Subscription Policy</Link>
-            <a href="mailto:batch.maker.app@gmail.com" className="hover:text-gray-700">Contact</a>
-          </div>
-        </div>
-      </footer>
-
+      <Footer />
     </div>
   )
 }
