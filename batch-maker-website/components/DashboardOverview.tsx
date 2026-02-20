@@ -5,6 +5,36 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const supabase = getSupabaseClient();
 
+// ─── Inline toast (replaces alert() to prevent React re-render wipes) ──────
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; message: string; type: ToastType; }
+let toastCounter = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = ++toastCounter;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
+  return { toasts, showToast };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
+          t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+        }`}>
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function Overview({
   workflows,
@@ -22,6 +52,8 @@ export default function Overview({
   selectedLocationId = 'all',
   fetchShoppingList,
 }: DashboardProps) {
+  const { toasts, showToast } = useToast();
+
   const [addShoppingItemModalOpen, setAddShoppingItemModalOpen] = useState(false);
   const [shoppingFormData, setShoppingFormData] = useState({
     item_name: '',
@@ -83,7 +115,6 @@ export default function Overview({
 
     const stats = await Promise.all(
       locations.map(async (location) => {
-        // Fetch batch reports for this location
         const { data: reports } = await supabase
           .from('batch_completion_reports')
           .select('*')
@@ -91,14 +122,12 @@ export default function Overview({
           .eq('location_id', location.id)
           .gte('created_at', last30Days.toISOString());
 
-        // Fetch inventory for this location
         const { data: inventory } = await supabase
           .from('inventory_items')
           .select('*')
           .eq('user_id', user.id)
           .eq('location_id', location.id);
 
-        // Calculate stats
         const batchesCompleted = reports?.length || 0;
         const totalRevenue = reports?.reduce((sum, r) => {
           const template = batchTemplates.find(t => t.workflow_name === r.workflow_name);
@@ -106,10 +135,10 @@ export default function Overview({
         }, 0) || 0;
         const totalCost = reports?.reduce((sum, r) => sum + (r.total_cost || 0), 0) || 0;
         const profit = totalRevenue - totalCost;
-        const inventoryValue = inventory?.reduce((sum, item) => 
+        const inventoryValue = inventory?.reduce((sum, item) =>
           sum + (item.quantity * (item.cost_per_unit || 0)), 0
         ) || 0;
-        const lowStockCount = inventory?.filter(item => 
+        const lowStockCount = inventory?.filter(item =>
           item.low_stock_threshold && item.quantity <= item.low_stock_threshold
         ).length || 0;
 
@@ -128,7 +157,7 @@ export default function Overview({
     setLocationStats(stats);
   }
 
-  const lowStockItems = inventoryItems.filter(item => 
+  const lowStockItems = inventoryItems.filter(item =>
     item.low_stock_threshold && item.quantity <= item.low_stock_threshold
   );
 
@@ -150,12 +179,12 @@ export default function Overview({
   const last30Days = new Date();
   last30Days.setDate(last30Days.getDate() - 30);
   const recentReports = batchReports.filter(r => new Date(r.timestamp) >= last30Days);
-  
+
   const totalRevenue30d = recentReports.reduce((sum, r) => {
     const template = batchTemplates.find(t => t.workflow_name === r.workflow_name);
     return sum + ((template?.selling_price || 0) * r.batch_size_multiplier);
   }, 0);
-  
+
   const totalCost30d = recentReports.reduce((sum, r) => sum + (r.total_cost || 0), 0);
   const profit30d = totalRevenue30d - totalCost30d;
 
@@ -170,7 +199,7 @@ export default function Overview({
 
   async function handleAddShoppingItem() {
     if (!shoppingFormData.item_name || shoppingFormData.quantity <= 0) {
-      alert('Please fill in required fields');
+      showToast('Please fill in required fields', 'error');
       return;
     }
 
@@ -192,10 +221,10 @@ export default function Overview({
         item_name: '', quantity: 0, unit: 'kg', priority: 'normal',
         estimated_cost: 0, supplier: '', notes: '',
       });
-      alert('Item added to shopping list!');
+      showToast('Item added to shopping list!', 'success');
     } catch (error) {
       console.error('Error adding shopping item:', error);
-      alert('Failed to add shopping item');
+      showToast('Failed to add shopping item', 'error');
     }
   }
 
@@ -207,11 +236,11 @@ export default function Overview({
           Welcome back, {profile?.device_name || user?.email?.split('@')[0] || 'User'}!
         </h2>
         <p className="text-gray-600">
-          {new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
           })}
         </p>
         {showingAllLocations && (
@@ -237,7 +266,7 @@ export default function Overview({
           <div className="text-xs text-blue-600">View workflows →</div>
         </Link>
 
-        <Link href="/dashboard?view=analytics"  className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-green-500 hover:shadow-md transition-shadow">
+        <Link href="/dashboard?view=analytics" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-green-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600">Completed Today</h3>
             <span className="text-2xl">✅</span>
@@ -278,14 +307,14 @@ export default function Overview({
         )}
       </div>
 
-      {/* Location Comparison Section - Only show when viewing all locations */}
+      {/* Location Comparison Section */}
       {showingAllLocations && locationStats.length > 0 && (
         <div className="glass-card rounded-xl p-6 shadow-sm mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <span>📊</span>
             Location Performance Comparison (Last 30 Days)
           </h2>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {locationStats.map((stat) => (
               <div key={stat.location.id} className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
@@ -332,13 +361,12 @@ export default function Overview({
             ))}
           </div>
 
-          {/* Summary Stats */}
           <div className="mt-4 pt-4 border-t-2 border-gray-200">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Top Performer (Revenue)</div>
                 <div className="text-sm font-bold text-blue-600">
-                  {locationStats.reduce((max, stat) => 
+                  {locationStats.reduce((max, stat) =>
                     stat.totalRevenue > max.totalRevenue ? stat : max
                   ).location.name}
                 </div>
@@ -346,7 +374,7 @@ export default function Overview({
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Most Productive</div>
                 <div className="text-sm font-bold text-green-600">
-                  {locationStats.reduce((max, stat) => 
+                  {locationStats.reduce((max, stat) =>
                     stat.batchesCompleted > max.batchesCompleted ? stat : max
                   ).location.name}
                 </div>
@@ -354,7 +382,7 @@ export default function Overview({
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Highest Profit</div>
                 <div className="text-sm font-bold text-purple-600">
-                  {locationStats.reduce((max, stat) => 
+                  {locationStats.reduce((max, stat) =>
                     stat.profit > max.profit ? stat : max
                   ).location.name}
                 </div>
@@ -362,7 +390,7 @@ export default function Overview({
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Largest Inventory</div>
                 <div className="text-sm font-bold text-orange-600">
-                  {locationStats.reduce((max, stat) => 
+                  {locationStats.reduce((max, stat) =>
                     stat.inventoryValue > max.inventoryValue ? stat : max
                   ).location.name}
                 </div>
@@ -373,7 +401,7 @@ export default function Overview({
       )}
 
       {/* Alerts Section */}
-      {(lowStockItems.length > 0 || urgentShoppingItems.length > 0 || activeBatches.some(b => b.active_timers?.length > 0)) && (
+      {(lowStockItems.length > 0 || urgentShoppingItems.length > 0) && (
         <div className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-red-500 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <span className="text-xl">⚠️</span>
@@ -388,7 +416,7 @@ export default function Overview({
                     Current: {item.quantity} {item.unit} | Threshold: {item.low_stock_threshold} {item.unit}
                   </p>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     setShoppingFormData({
                       ...shoppingFormData,
@@ -409,25 +437,19 @@ export default function Overview({
               <div key={item.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{item.item_name}</p>
-                  <p className="text-xs text-gray-600">
-                    {item.priority.toUpperCase()} - {item.quantity} {item.unit}
-                  </p>
+                  <p className="text-xs text-gray-600">Priority: {item.priority}</p>
                 </div>
-                <Link 
-                  href="/dashboard?view=inventory"
-                  className="text-xs font-semibold text-orange-600 hover:underline"
-                >
-                  View List →
-                </Link>
+                <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded font-medium">
+                  Pending Order
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Main Content Grid */}
+      {/* Quick Actions + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Quick Actions - Spans 2 columns */}
         <div className="lg:col-span-2 glass-card rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -438,7 +460,7 @@ export default function Overview({
               <span className="text-3xl mb-2">➕</span>
               <span className="text-sm font-medium text-gray-700 text-center">New Workflow</span>
             </Link>
-            
+
             <Link
               href="/dashboard?view=calendar"
               className="flex flex-col items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
@@ -485,7 +507,6 @@ export default function Overview({
           </div>
         </div>
 
-        {/* Recent Activity - Spans 1 column */}
         <div className="glass-card rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
           {recentActivity.length === 0 ? (
@@ -585,15 +606,15 @@ export default function Overview({
         </div>
       </div>
 
-      {/* Add Shopping Item Modal - FIXED Z-INDEX */}
+      {/* Add Shopping Item Modal */}
       {addShoppingItemModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" 
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
           style={{ zIndex: 9999 }}
           onClick={() => setAddShoppingItemModalOpen(false)}
         >
-          <div 
-            className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" 
+          <div
+            className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
             style={{ zIndex: 10000, position: 'relative' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -610,22 +631,18 @@ export default function Overview({
             <div className="flex gap-2 mb-4">
               <input
                 type="number"
-                placeholder="Quantity"
+                placeholder="Quantity *"
                 value={shoppingFormData.quantity || ''}
                 onChange={(e) => setShoppingFormData({...shoppingFormData, quantity: parseFloat(e.target.value) || 0})}
-                className="flex-1 p-3 border border-gray-300 rounded-lg"
+                className="flex-[2] p-3 border border-gray-300 rounded-lg"
               />
-              <select
+              <input
+                type="text"
+                placeholder="Unit"
                 value={shoppingFormData.unit}
                 onChange={(e) => setShoppingFormData({...shoppingFormData, unit: e.target.value})}
-                className="p-3 border border-gray-300 rounded-lg"
-              >
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="L">L</option>
-                <option value="mL">mL</option>
-                <option value="units">units</option>
-              </select>
+                className="flex-1 p-3 border border-gray-300 rounded-lg"
+              />
             </div>
 
             <select
@@ -633,15 +650,14 @@ export default function Overview({
               onChange={(e) => setShoppingFormData({...shoppingFormData, priority: e.target.value as any})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
-              <option value="low">Low Priority</option>
               <option value="normal">Normal Priority</option>
               <option value="high">High Priority</option>
               <option value="urgent">Urgent</option>
+              <option value="low">Low Priority</option>
             </select>
 
             <input
               type="number"
-              step="0.01"
               placeholder="Estimated cost"
               value={shoppingFormData.estimated_cost || ''}
               onChange={(e) => setShoppingFormData({...shoppingFormData, estimated_cost: parseFloat(e.target.value) || 0})}
@@ -674,6 +690,8 @@ export default function Overview({
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

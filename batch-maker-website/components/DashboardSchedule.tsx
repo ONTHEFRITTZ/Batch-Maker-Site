@@ -4,6 +4,36 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const supabase = getSupabaseClient();
 
+// ─── Inline toast (replaces alert() to prevent React re-render wipes) ──────
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; message: string; type: ToastType; }
+let toastCounter = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = ++toastCounter;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
+  return { toasts, showToast };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
+          t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+        }`}>
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 interface Shift {
   id: string;
@@ -35,6 +65,8 @@ interface TimeEntry {
 }
 
 export default function DashboardSchedule({ user, networkMembers, isPremium }: DashboardProps) {
+  const { toasts, showToast } = useToast();
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -59,7 +91,6 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Fetch data
   useEffect(() => {
     if (!user || !isPremium) return;
     fetchShifts();
@@ -97,7 +128,6 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
     if (!error && data) setTimeEntries(data);
   }
 
-  // Get assignable members
   const assignableMembers = [
     { id: user.id, label: 'You' },
     ...networkMembers
@@ -114,7 +144,6 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
     return member?.profiles?.device_name || member?.profiles?.email || 'Unknown';
   }
 
-  // Calendar helpers
   const getCalendarDays = () => {
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth();
@@ -139,10 +168,9 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
     return timeEntries.filter(e => e.clock_in.split('T')[0] === dateStr);
   };
 
-  // Create shift
   async function handleCreateShift() {
     if (!shiftFormData.assigned_to || !shiftFormData.shift_date || !shiftFormData.start_time || !shiftFormData.end_time) {
-      alert('Please fill in all required fields');
+      showToast('Please fill in all required fields', 'error');
       return;
     }
 
@@ -156,10 +184,12 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       role: shiftFormData.role || null,
       notes: shiftFormData.notes || null,
       status: 'scheduled',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
 
     if (error) {
-      alert('Failed to create shift');
+      showToast('Failed to create shift', 'error');
       console.error(error);
       return;
     }
@@ -169,7 +199,6 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
     setShiftFormData({ assigned_to: '', shift_date: '', start_time: '09:00', end_time: '17:00', role: '', notes: '' });
   }
 
-  // Cancel shift
   async function handleCancelShift(shiftId: string) {
     const { error } = await supabase
       .from('shifts')
@@ -177,17 +206,16 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       .eq('id', shiftId);
 
     if (error) {
-      alert('Failed to cancel shift');
+      showToast('Failed to cancel shift', 'error');
       return;
     }
 
     await fetchShifts();
   }
 
-  // Edit time entry
   async function handleEditTimeEntry() {
     if (!editingEntryId || !entryEditData.edit_reason) {
-      alert('Edit reason is required');
+      showToast('Edit reason is required', 'error');
       return;
     }
 
@@ -207,11 +235,10 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       .eq('id', editingEntryId);
 
     if (error) {
-      alert('Failed to edit time entry');
+      showToast('Failed to edit time entry', 'error');
       return;
     }
 
-    // TODO: Send in-app notification to employee
     console.log('[Schedule] Time entry edited, would send notification');
 
     await fetchTimeEntries();
@@ -250,8 +277,8 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
                 </div>
               </div>
               <div className="text-sm text-gray-600 space-y-1">
-                <div> {memberShifts.length} upcoming shifts</div>
-                <div> {totalHours.toFixed(1)}h this month</div>
+                <div>{memberShifts.length} upcoming shifts</div>
+                <div>{totalHours.toFixed(1)}h this month</div>
                 {isOnline && <div className="text-green-600 font-medium">● Clocked In</div>}
               </div>
             </div>
@@ -307,32 +334,28 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
                 onClick={() => setSelectedDayDate(isSelected ? null : date)}
                 className={`aspect-square border rounded-md p-1.5 relative overflow-hidden cursor-pointer transition-all ${
                   isSelected ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200' :
-                  shiftsOnDay.length > 0 ? 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50' :
-                  isToday ? 'bg-sky-50 border-sky-400' : 'bg-white border-gray-200'
+                  shiftsOnDay.length > 0 ? 'bg-green-50 border-green-200 hover:bg-green-100' :
+                  isToday ? 'bg-blue-50 border-blue-200' :
+                  'bg-white border-gray-100 hover:bg-gray-50'
                 }`}
               >
-                <div className={`text-xs font-semibold mb-0.5 ${isToday ? 'text-sky-600' : 'text-gray-700'}`}>
+                <div className={`text-xs font-medium mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
                   {date.getDate()}
                 </div>
-
-                {shiftsOnDay.length > 0 && (
-                  <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4.5 h-4.5 flex items-center justify-center" style={{ width: '18px', height: '18px', fontSize: '9px', fontWeight: 600 }}>
-                    {shiftsOnDay.length}
-                  </div>
-                )}
-
                 <div className="space-y-0.5">
                   {shiftsOnDay.slice(0, 2).map(shift => (
                     <div
                       key={shift.id}
-                      className={`text-[9px] px-1 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis ${
-                        shift.status === 'cancelled' ? 'bg-red-100 text-red-500 line-through' : 'bg-green-100 text-green-700'
+                      className={`text-[9px] px-1 py-0.5 rounded truncate font-medium ${
+                        shift.status === 'cancelled' ? 'bg-gray-100 text-gray-400 line-through' : 'bg-blue-100 text-blue-700'
                       }`}
                     >
-                      {shift.start_time.slice(0, 5)} {shift.assigned_to_name}
+                      {shift.assigned_to_name}
                     </div>
                   ))}
-                  {shiftsOnDay.length > 2 && <div className="text-[9px] text-gray-500 italic px-1">+{shiftsOnDay.length - 2}</div>}
+                  {shiftsOnDay.length > 2 && (
+                    <div className="text-[9px] text-gray-500 italic">+{shiftsOnDay.length - 2}</div>
+                  )}
                 </div>
               </div>
             );
@@ -345,18 +368,36 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
         <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              📅 {selectedDayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </h2>
-            <button onClick={() => setSelectedDayDate(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setShiftFormData(prev => ({ ...prev, shift_date: selectedDayDate.toISOString().split('T')[0] }));
+                  setCreateShiftModalOpen(true);
+                }}
+                className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs font-medium hover:bg-blue-600 transition-colors"
+              >
+                + Add Shift
+              </button>
+              <button
+                onClick={() => { setSelectedDayDate(null); setEditingEntryId(null); }}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Shifts for this day */}
           {dayDetailShifts.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Scheduled Shifts</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Shifts</h3>
               <div className="space-y-2">
                 {dayDetailShifts.map(shift => (
-                  <div key={shift.id} className={`p-3 rounded-lg border ${shift.status === 'cancelled' ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-green-50 border-green-200'}`}>
+                  <div key={shift.id} className={`p-3 rounded-lg border ${
+                    shift.status === 'cancelled' ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-green-50 border-green-200'
+                  }`}>
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900 text-sm">{shift.assigned_to_name}</div>
@@ -496,6 +537,8 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

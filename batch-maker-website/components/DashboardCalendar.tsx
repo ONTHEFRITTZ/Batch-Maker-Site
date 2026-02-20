@@ -4,6 +4,37 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const supabase = getSupabaseClient();
 
+// ─── Inline toast (replaces alert() to prevent React re-render wipes) ──────
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; message: string; type: ToastType; }
+let toastCounter = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = ++toastCounter;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
+  return { toasts, showToast };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
+          t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+        }`}>
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function Calendar({
   user,
   workflows,
@@ -13,6 +44,8 @@ export default function Calendar({
   isPremium,
   fetchScheduledBatches,
 }: DashboardProps) {
+  const { toasts, showToast } = useToast();
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
@@ -38,7 +71,7 @@ export default function Calendar({
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // FIX: Always include yourself in the assignable list, then append network members.
+  // Always include yourself in the assignable list, then append network members.
   const assignableMembers = [
     { id: user.id, label: 'You' },
     ...networkMembers
@@ -85,12 +118,11 @@ export default function Calendar({
   // ─── SCHEDULE (create new) ───────────────────────────────────────────────
   async function handleScheduleBatch() {
     if (!scheduleFormData.workflow_id || !scheduleFormData.scheduled_date || !scheduleFormData.name) {
-      alert('Please fill in required fields');
+      showToast('Please fill in required fields', 'error');
       return;
     }
 
     try {
-      // FIX: resolve name properly — works for yourself AND network members
       const assignedToName = resolveAssigneeName(scheduleFormData.assigned_to || null);
 
       const { error } = await supabase.from('scheduled_batches').insert({
@@ -117,10 +149,10 @@ export default function Calendar({
         workflow_id: '', template_id: '', scheduled_date: '', scheduled_time: '',
         name: '', batch_size_multiplier: 1, assigned_to: '', notes: '',
       });
-      alert('Batch scheduled successfully!');
+      showToast('Batch scheduled successfully!', 'success');
     } catch (error) {
       console.error('Error scheduling batch:', error);
-      alert('Failed to schedule batch');
+      showToast('Failed to schedule batch', 'error');
     }
   }
 
@@ -161,12 +193,10 @@ export default function Calendar({
       await fetchScheduledBatches();
       setEditingBatchId(null);
 
-      // If the date was changed, jump the calendar to the new date so the user sees it
       const newDate = new Date(editFormData.scheduled_date + 'T00:00:00');
       if (newDate.getMonth() !== selectedDate.getMonth() || newDate.getFullYear() !== selectedDate.getFullYear()) {
         setSelectedDate(newDate);
       }
-      // Close day panel if the batch moved off the currently-viewed day
       if (selectedDayDate) {
         const currentDayStr = selectedDayDate.toISOString().split('T')[0];
         if (editFormData.scheduled_date !== currentDayStr) {
@@ -175,7 +205,7 @@ export default function Calendar({
       }
     } catch (error) {
       console.error('Error saving edit:', error);
-      alert('Failed to save changes');
+      showToast('Failed to save changes', 'error');
     }
   }
 
@@ -184,13 +214,12 @@ export default function Calendar({
     try {
       const now = new Date();
       const workflow = workflows.find(w => w.id === batch.workflow_id);
-      
+
       if (!workflow) {
-        alert('Workflow not found');
+        showToast('Workflow not found', 'error');
         return;
       }
 
-      // Step 1: Create an actual batch in the batches table
       const { data: newBatch, error: batchError } = await supabase
         .from('batches')
         .insert({
@@ -209,7 +238,6 @@ export default function Calendar({
 
       if (batchError) throw batchError;
 
-      // Step 2: Update the scheduled batch to mark it as started
       const scheduledDateTime = batch.scheduled_time
         ? new Date(`${batch.scheduled_date}T${batch.scheduled_time}`)
         : new Date(`${batch.scheduled_date}T00:00:00`);
@@ -219,7 +247,6 @@ export default function Calendar({
         updated_at: now.toISOString(),
       };
 
-      // If starting early, update the scheduled date/time
       if (now < scheduledDateTime) {
         updates.scheduled_date = now.toISOString().split('T')[0];
         updates.scheduled_time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -233,13 +260,10 @@ export default function Calendar({
       if (updateError) throw updateError;
 
       await fetchScheduledBatches();
-      alert(`Batch "${batch.name}" started! You can now work on it from the Workflows page.`);
-      
-      // Optionally navigate to the batch execution page
-      // router.push(`/batch-execution?id=${newBatch.id}`);
+      showToast(`Batch "${batch.name}" started! You can now work on it from the Workflows page.`, 'success');
     } catch (error) {
       console.error('Error starting batch:', error);
-      alert('Failed to start batch');
+      showToast('Failed to start batch', 'error');
     }
   }
 
@@ -255,14 +279,15 @@ export default function Calendar({
       await fetchScheduledBatches();
     } catch (error) {
       console.error('Error cancelling batch:', error);
-      alert('Failed to cancel batch');
+      showToast('Failed to cancel batch', 'error');
     }
   }
 
   // ─── DAY DETAIL: batches for the clicked date ────────────────────────────
-  const dayDetailBatches = selectedDayDate ? getBatchesForDate(selectedDayDate) : [];
+  const dayDetailBatches = selectedDayDate ?
+    getBatchesForDate(selectedDayDate) : [];
 
-  // ─── UPCOMING LIST (sorted by date ascending) ───────────────────────────
+  // ─── UPCOMING LIST (sorted by date ascending) ────────────────────────────
   const upcomingBatches = [...scheduledBatches]
     .filter(b => b.status === 'scheduled')
     .sort((a, b) => {
@@ -314,49 +339,27 @@ export default function Calendar({
 
             const batchesOnDay = getBatchesForDate(date);
             const isToday = date.toDateString() === new Date().toDateString();
-            const isSelected = selectedDayDate && date.toDateString() === selectedDayDate.toDateString();
-            const hasBatches = batchesOnDay.length > 0;
+            const isSelected = selectedDayDate?.toDateString() === date.toDateString();
 
             return (
               <div
                 key={date.toISOString()}
-                onClick={() => {
-                  // Toggle: clicking the same date again closes the panel
-                  if (selectedDayDate && date.toDateString() === selectedDayDate.toDateString()) {
-                    setSelectedDayDate(null);
-                    setEditingBatchId(null);
-                  } else {
-                    setSelectedDayDate(date);
-                    setEditingBatchId(null);
-                  }
-                }}
-                className={`aspect-square border rounded-md p-1.5 relative overflow-hidden transition-all duration-150 ${
-                  isSelected
-                    ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200 cursor-pointer'
-                    : hasBatches
-                      ? 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
-                      : isToday
-                        ? 'bg-sky-50 border-sky-400'
-                        : 'bg-white border-gray-200'
+                onClick={() => setSelectedDayDate(isSelected ? null : date)}
+                className={`aspect-square p-1 rounded-md cursor-pointer transition-all overflow-hidden ${
+                  isSelected ? 'bg-blue-100 border-2 border-blue-400' :
+                  isToday ? 'bg-blue-50 border border-blue-300' :
+                  batchesOnDay.length > 0 ? 'bg-green-50 border border-green-200 hover:bg-green-100' :
+                  'bg-white border border-gray-100 hover:bg-gray-50'
                 }`}
               >
-                <div className={`text-xs font-semibold mb-0.5 ${isToday ? 'text-sky-600' : 'text-gray-700'}`}>
+                <div className={`text-xs font-medium mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
                   {date.getDate()}
                 </div>
-
-                {/* Batch count badge */}
-                {hasBatches && (
-                  <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4.5 h-4.5 flex items-center justify-center" style={{ width: '18px', height: '18px', fontSize: '9px', fontWeight: 600 }}>
-                    {batchesOnDay.length}
-                  </div>
-                )}
-
-                {/* Tiny batch name pills */}
                 <div className="space-y-0.5">
                   {batchesOnDay.slice(0, 2).map(batch => (
                     <div
                       key={batch.id}
-                      className={`text-[9px] px-1 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis ${
+                      className={`text-[10px] px-1 py-0.5 rounded truncate font-medium ${
                         batch.status === 'completed' ? 'bg-green-100 text-green-700' :
                         batch.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
                         batch.status === 'cancelled' ? 'bg-red-100 text-red-500 line-through' :
@@ -376,7 +379,7 @@ export default function Calendar({
         </div>
       </div>
 
-      {/* ── Day Detail Panel ── (appears below calendar when a date is clicked) */}
+      {/* ── Day Detail Panel ── */}
       {selectedDayDate && (
         <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm border border-blue-200">
           <div className="flex justify-between items-center mb-4">
@@ -386,7 +389,6 @@ export default function Calendar({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  // Pre-fill the schedule modal with this date
                   setScheduleFormData(prev => ({
                     ...prev,
                     scheduled_date: selectedDayDate.toISOString().split('T')[0],
@@ -414,7 +416,6 @@ export default function Calendar({
                 const workflow = workflows.find(w => w.id === batch.workflow_id);
                 const isEditing = editingBatchId === batch.id;
 
-                // ── Editing state ──
                 if (isEditing) {
                   return (
                     <div key={batch.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -483,7 +484,6 @@ export default function Calendar({
                   );
                 }
 
-                // ── View state ──
                 return (
                   <div
                     key={batch.id}
@@ -505,40 +505,37 @@ export default function Calendar({
                           batch.status === 'cancelled' ? 'bg-gray-200 text-gray-500' :
                           'bg-blue-100 text-blue-700'
                         }`}>
-                          {batch.status === 'in_progress' ? 'In Progress' : batch.status.charAt(0).toUpperCase() + batch.status.slice(1)}
+                          {batch.status === 'in_progress' ? 'In Progress' : batch.status}
                         </span>
                       </div>
-
-                      <div className="text-xs text-gray-500 space-y-0.5">
-                        {workflow && <div>📋 Workflow: {workflow.name}</div>}
-                        {batch.scheduled_time && <div>⏰ Time: {batch.scheduled_time}</div>}
-                        {batch.assigned_to && <div>👤 Assigned to: {batch.assigned_to_name || resolveAssigneeName(batch.assigned_to)}</div>}
-                        {batch.batch_size_multiplier !== 1 && <div>📊 Size: {batch.batch_size_multiplier}x</div>}
-                        {batch.notes && <div className="italic mt-1">💬 {batch.notes}</div>}
+                      <div className="text-xs text-gray-500">
+                        {batch.scheduled_time && `🕐 ${batch.scheduled_time} • `}
+                        {`${batch.batch_size_multiplier}x`}
+                        {workflow && ` • ${workflow.name}`}
+                        {batch.assigned_to && ` • 👤 ${batch.assigned_to_name || resolveAssigneeName(batch.assigned_to)}`}
                       </div>
+                      {batch.notes && <div className="text-xs text-gray-500 italic mt-1">{batch.notes}</div>}
                     </div>
-
-                    {/* Action buttons — context-sensitive based on status */}
-                    <div className="flex gap-1.5 flex-shrink-0">
+                    <div className="flex flex-col gap-1 flex-shrink-0">
                       {batch.status === 'scheduled' && (
                         <>
                           <button
-                            onClick={() => openEditForm(batch)}
-                            className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
+                            onClick={() => handleStartBatch(batch)}
+                            className="px-3 py-1.5 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors"
                           >
-                            Edit
+                            ▶ Start
                           </button>
                           <button
-                            onClick={() => handleStartBatch(batch)}
-                            className="px-2.5 py-1 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors"
+                            onClick={() => openEditForm(batch)}
+                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors"
                           >
-                            Start
+                            ✏️ Edit
                           </button>
                           <button
                             onClick={() => handleCancelBatch(batch.id)}
-                            className="px-2.5 py-1 bg-red-100 text-red-600 rounded text-xs font-medium hover:bg-red-200 transition-colors"
+                            className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md text-xs font-medium hover:bg-red-200 transition-colors"
                           >
-                            Cancel
+                            ✕ Cancel
                           </button>
                         </>
                       )}
@@ -560,7 +557,7 @@ export default function Calendar({
         </div>
       )}
 
-      {/* ── Upcoming Scheduled Batches (sorted) ── */}
+      {/* ── Upcoming Scheduled Batches ── */}
       <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Scheduled Batches</h2>
         {upcomingBatches.length === 0 ? (
@@ -653,7 +650,6 @@ export default function Calendar({
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
 
-            {/* FIX: Use assignableMembers — always includes "You" */}
             <select
               value={scheduleFormData.assigned_to}
               onChange={(e) => setScheduleFormData({ ...scheduleFormData, assigned_to: e.target.value })}
@@ -683,6 +679,8 @@ export default function Calendar({
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

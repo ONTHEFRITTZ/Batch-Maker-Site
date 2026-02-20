@@ -4,6 +4,37 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const supabase = getSupabaseClient();
 
+// ─── Inline toast (replaces alert() to prevent React re-render wipes) ──────
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; message: string; type: ToastType; }
+let toastCounter = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = ++toastCounter;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
+  return { toasts, showToast };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
+          t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+        }`}>
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function Inventory({
   user,
   inventoryItems,
@@ -13,6 +44,8 @@ export default function Inventory({
   fetchInventoryTransactions,
   fetchShoppingList,
 }: DashboardProps) {
+  const { toasts, showToast } = useToast();
+
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addInventoryModalOpen, setAddInventoryModalOpen] = useState(false);
@@ -48,11 +81,11 @@ export default function Inventory({
     notes: '',
   });
 
-  const lowStockItems = inventoryItems.filter(item => 
+  const lowStockItems = inventoryItems.filter(item =>
     item.low_stock_threshold && item.quantity <= item.low_stock_threshold
   );
 
-  const totalInventoryValue = inventoryItems.reduce((sum, item) => 
+  const totalInventoryValue = inventoryItems.reduce((sum, item) =>
     sum + (item.quantity * (item.cost_per_unit || 0)), 0
   );
 
@@ -90,7 +123,7 @@ export default function Inventory({
 
   async function handleAddInventoryItem() {
     if (!inventoryFormData.name || inventoryFormData.quantity <= 0) {
-      alert('Please fill in required fields');
+      showToast('Please fill in required fields', 'error');
       return;
     }
 
@@ -110,10 +143,10 @@ export default function Inventory({
         name: '', quantity: 0, unit: 'kg', low_stock_threshold: 0,
         cost_per_unit: 0, supplier: '', category: '', notes: '',
       });
-      alert('Inventory item added successfully!');
+      showToast('Inventory item added successfully!', 'success');
     } catch (error) {
       console.error('Error adding inventory:', error);
-      alert('Failed to add inventory item');
+      showToast('Failed to add inventory item', 'error');
     }
   }
 
@@ -140,16 +173,16 @@ export default function Inventory({
 
       await fetchInventoryItems();
       setEditingItem(null);
-      alert('Item updated successfully!');
+      showToast('Item updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating item:', error);
-      alert('Failed to update item');
+      showToast('Failed to update item', 'error');
     }
   }
 
   async function handleBulkTransaction() {
     if (selectedItems.size === 0 || bulkTransactionData.quantity <= 0) {
-      alert('Please select items and enter quantity');
+      showToast('Please select items and enter quantity', 'error');
       return;
     }
 
@@ -165,7 +198,6 @@ export default function Inventory({
           newQuantity += bulkTransactionData.quantity;
         }
 
-        // Insert transaction
         await supabase.from('inventory_transactions').insert({
           user_id: user.id,
           item_id: itemId,
@@ -177,10 +209,9 @@ export default function Inventory({
           created_at: new Date().toISOString(),
         });
 
-        // Update item quantity
         await supabase
           .from('inventory_items')
-          .update({ 
+          .update({
             quantity: Math.max(0, newQuantity),
             last_updated: new Date().toISOString()
           })
@@ -192,16 +223,16 @@ export default function Inventory({
       setBulkTransactionModalOpen(false);
       setSelectedItems(new Set());
       setBulkTransactionData({ quantity: 0, cost: 0, notes: '' });
-      alert(`Transaction recorded for ${selectedItems.size} item(s)`);
+      showToast(`Transaction recorded for ${selectedItems.size} item(s)`, 'success');
     } catch (error) {
       console.error('Error recording transaction:', error);
-      alert('Failed to record transaction');
+      showToast('Failed to record transaction', 'error');
     }
   }
 
   async function handleAddShoppingItem() {
     if (!shoppingFormData.item_name || shoppingFormData.quantity <= 0) {
-      alert('Please fill in required fields');
+      showToast('Please fill in required fields', 'error');
       return;
     }
 
@@ -222,10 +253,10 @@ export default function Inventory({
         item_name: '', quantity: 0, unit: 'kg', priority: 'normal',
         estimated_cost: 0, supplier: '', notes: '',
       });
-      alert('Item added to shopping list!');
+      showToast('Item added to shopping list!', 'success');
     } catch (error) {
       console.error('Error adding shopping item:', error);
-      alert('Failed to add shopping item');
+      showToast('Failed to add shopping item', 'error');
     }
   }
 
@@ -248,10 +279,10 @@ export default function Inventory({
 
         if (existingItem) {
           const newQuantity = existingItem.quantity + shoppingItem.quantity;
-          
+
           await supabase
             .from('inventory_items')
-            .update({ 
+            .update({
               quantity: newQuantity,
               last_updated: new Date().toISOString()
             })
@@ -276,8 +307,8 @@ export default function Inventory({
               quantity: shoppingItem.quantity,
               unit: shoppingItem.unit,
               supplier: shoppingItem.supplier || '',
-              cost_per_unit: shoppingItem.estimated_cost && shoppingItem.quantity > 0 
-                ? shoppingItem.estimated_cost / shoppingItem.quantity 
+              cost_per_unit: shoppingItem.estimated_cost && shoppingItem.quantity > 0
+                ? shoppingItem.estimated_cost / shoppingItem.quantity
                 : 0,
               low_stock_threshold: 0,
               category: '',
@@ -309,7 +340,7 @@ export default function Inventory({
       await fetchShoppingList();
     } catch (error) {
       console.error('Error updating shopping item:', error);
-      alert('Failed to update shopping item status');
+      showToast('Failed to update shopping item status', 'error');
     }
   }
 
@@ -351,7 +382,7 @@ export default function Inventory({
           <button
             onClick={() => {
               if (selectedItems.size === 0) {
-                alert('Please select items first');
+                showToast('Please select items first', 'error');
                 return;
               }
               setTransactionType('add');
@@ -369,7 +400,7 @@ export default function Inventory({
           <button
             onClick={() => {
               if (selectedItems.size === 0) {
-                alert('Please select items first');
+                showToast('Please select items first', 'error');
                 return;
               }
               setTransactionType('use');
@@ -412,11 +443,10 @@ export default function Inventory({
               <div className="w-24 text-center">Status</div>
             </div>
 
-            {/* Items */}
             {filteredItems.map(item => {
               const status = getStockStatus(item);
               const isSelected = selectedItems.has(item.id);
-              
+
               return (
                 <div
                   key={item.id}
@@ -570,7 +600,7 @@ export default function Inventory({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingItem(null)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Edit Item</h3>
-            
+
             <input
               type="text"
               placeholder="Item name"
@@ -596,23 +626,21 @@ export default function Inventory({
               />
             </div>
 
-            <div className="flex gap-2 mb-4">
-              <input
-                type="number"
-                placeholder="Low stock threshold"
-                value={editingItem.low_stock_threshold || ''}
-                onChange={(e) => setEditingItem({...editingItem, low_stock_threshold: parseFloat(e.target.value) || 0})}
-                className="flex-1 p-3 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Cost per unit"
-                value={editingItem.cost_per_unit || ''}
-                onChange={(e) => setEditingItem({...editingItem, cost_per_unit: parseFloat(e.target.value) || 0})}
-                className="flex-1 p-3 border border-gray-300 rounded-lg"
-              />
-            </div>
+            <input
+              type="number"
+              placeholder="Low stock threshold"
+              value={editingItem.low_stock_threshold || ''}
+              onChange={(e) => setEditingItem({...editingItem, low_stock_threshold: parseFloat(e.target.value) || 0})}
+              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+            />
+
+            <input
+              type="number"
+              placeholder="Cost per unit"
+              value={editingItem.cost_per_unit || ''}
+              onChange={(e) => setEditingItem({...editingItem, cost_per_unit: parseFloat(e.target.value) || 0})}
+              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+            />
 
             <input
               type="text"
@@ -656,7 +684,7 @@ export default function Inventory({
             <h3 className="text-xl font-semibold mb-6 text-gray-900">
               {transactionType === 'add' ? '➕ Add Stock' : '➖ Use Stock'}
             </h3>
-            
+
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <div className="text-sm font-medium text-gray-900 mb-1">Selected Items ({selectedItems.size}):</div>
               <div className="text-xs text-gray-600">
@@ -709,7 +737,7 @@ export default function Inventory({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAddInventoryModalOpen(false)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add Inventory Item</h3>
-            
+
             <input
               type="text"
               placeholder="Item name *"
@@ -745,7 +773,6 @@ export default function Inventory({
               />
               <input
                 type="number"
-                step="0.01"
                 placeholder="Cost per unit"
                 value={inventoryFormData.cost_per_unit || ''}
                 onChange={(e) => setInventoryFormData({...inventoryFormData, cost_per_unit: parseFloat(e.target.value) || 0})}
@@ -793,7 +820,7 @@ export default function Inventory({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAddShoppingItemModalOpen(false)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add to Order List</h3>
-            
+
             <input
               type="text"
               placeholder="Item name *"
@@ -824,15 +851,14 @@ export default function Inventory({
               onChange={(e) => setShoppingFormData({...shoppingFormData, priority: e.target.value as any})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
-              <option value="low">Low Priority</option>
               <option value="normal">Normal Priority</option>
               <option value="high">High Priority</option>
               <option value="urgent">Urgent</option>
+              <option value="low">Low Priority</option>
             </select>
 
             <input
               type="number"
-              step="0.01"
               placeholder="Estimated cost"
               value={shoppingFormData.estimated_cost || ''}
               onChange={(e) => setShoppingFormData({...shoppingFormData, estimated_cost: parseFloat(e.target.value) || 0})}
@@ -851,7 +877,7 @@ export default function Inventory({
               placeholder="Notes"
               value={shoppingFormData.notes}
               onChange={(e) => setShoppingFormData({...shoppingFormData, notes: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[60px]"
+              className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[80px]"
             />
 
             <div className="flex gap-2">
@@ -865,6 +891,8 @@ export default function Inventory({
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

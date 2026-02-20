@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { DashboardProps, ActiveSession } from '../lib/dashboard-types';
@@ -6,6 +6,46 @@ import ImportRecipeModal from './ImportRecipeModal';
 import { getSupabaseClient } from '../lib/supabase';
 
 const supabase = getSupabaseClient();
+
+// ─── Simple inline toast ──────────────────────────────────────────────────
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; message: string; type: ToastType; }
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  let nextId = 0;
+  const show = useCallback((message: string, type: ToastType = 'success') => {
+    const id = ++nextId;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
+  return { toasts, show };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all ${
+          t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+        }`}>
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+interface ClockedInMember {
+  user_id: string;
+  device_name: string;
+  clock_in: string;
+  current_workflow_name?: string;
+  current_batch_id?: string;
+  current_step?: number;
+}
 
 export default function Workflows({
   user,
@@ -19,7 +59,10 @@ export default function Workflows({
   selectedLocationId,
 }: DashboardProps) {
   const router = useRouter();
+  const { toasts, show: showToast } = useToast();
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  // FIX: Team Status now tracks actually-clocked-in employees from time_entries
+  const [clockedInMembers, setClockedInMembers] = useState<ClockedInMember[]>([]);
   const [assignWorkflowModalOpen, setAssignWorkflowModalOpen] = useState(false);
   const [assignBatchModalOpen, setAssignBatchModalOpen] = useState(false);
   const [selectedWorkflowForAssignment, setSelectedWorkflowForAssignment] = useState<string>('');
@@ -30,36 +73,90 @@ export default function Workflows({
     if (!user) return;
 
     fetchActiveSessions();
-    const interval = setInterval(fetchActiveSessions, 3000);
+    fetchClockedInTeam();
+    const interval = setInterval(() => {
+      fetchActiveSessions();
+      fetchClockedInTeam();
+    }, 10000); // Refresh every 10s
 
     const batchChannel = supabase
       .channel('workflows-batches-realtime')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'batches',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: '*', schema: 'public', table: 'batches', filter: `user_id=eq.${user.id}` },
         () => {
-          console.log('Batch changed, refreshing active sessions');
           fetchActiveSessions();
+          fetchClockedInTeam();
         }
+      )
+      .subscribe();
+
+    // Also listen for clock-in/out changes
+    const timeEntryChannel = supabase
+      .channel('time-entries-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'time_entries', filter: `owner_id=eq.${user.id}` },
+        () => fetchClockedInTeam()
       )
       .subscribe();
 
     return () => {
       clearInterval(interval);
       supabase.removeChannel(batchChannel);
+      supabase.removeChannel(timeEntryChannel);
     };
   }, [user]);
 
+  // FIX: Team Status now queries time_entries for active clock-ins only
+  async function fetchClockedInTeam() {
+    if (!user) return;
+    try {
+      const { data: activeEntries } = await supabase
+        .from('time_entries')
+        .select('user_id, clock_in')
+        .eq('owner_id', user.id)
+        .is('clock_out', null);
+
+      if (!activeEntries || activeEntries.length === 0) {
+        setClockedInMembers([]);
+        return;
+      }
+
+      // Get profiles for clocked-in users
+      const userIds = activeEntries.map(e => e.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, device_name, email')
+        .in('id', userIds);
+
+      // Enrich with current batch/workflow info
+      const members: ClockedInMember[] = activeEntries.map(entry => {
+        const profile = profiles?.find(p => p.id === entry.user_id);
+        const activeBatch = batches.find(b => b.claimed_by === entry.user_id && !b.completed_at);
+        const activeWorkflow = workflows.find(w => w.id === activeBatch?.workflow_id);
+
+        return {
+          user_id: entry.user_id,
+          device_name: profile?.device_name || profile?.email || 'Unknown',
+          clock_in: entry.clock_in,
+          current_workflow_name: activeWorkflow?.name || activeBatch?.name,
+          current_batch_id: activeBatch?.id,
+          current_step: activeBatch?.current_step_index,
+        };
+      });
+
+      setClockedInMembers(members);
+    } catch (err) {
+      console.error('Error fetching clocked-in team:', err);
+    }
+  }
+
   async function fetchActiveSessions() {
     if (!user) return;
-
+    
     const sessions: ActiveSession[] = [];
-
+    
     const { data: activeBatches } = await supabase
       .from('batches')
       .select('*')
@@ -68,14 +165,14 @@ export default function Workflows({
       .order('updated_at', { ascending: false });
 
     const { data: freshMembers } = await supabase
-      .from('network_member_roles')
+      .from('networks')
       .select('*')
       .eq('owner_id', user.id);
 
     // Fetch profiles separately if we have members
     let profilesData: any[] = [];
     if (freshMembers && freshMembers.length > 0) {
-      const userIds = freshMembers.map(m => m.user_id).filter(Boolean);
+      const userIds = freshMembers.map((m: any) => m.user_id).filter(Boolean);
       if (userIds.length > 0) {
         const { data } = await supabase
           .from('profiles')
@@ -86,23 +183,23 @@ export default function Workflows({
     }
 
     // Merge profiles into members
-    const freshMembersWithProfiles = freshMembers?.map(member => ({
+    const freshMembersWithProfiles = freshMembers?.map((member: any) => ({
       ...member,
-      profiles: profilesData.find(p => p.id === member.user_id)
+      profiles: profilesData.find((p: any) => p.id === member.user_id)
     })) || [];
 
     if (activeBatches) {
       for (const batch of activeBatches) {
         const workflow = workflows.find(w => w.id === batch.workflow_id);
-        const member = freshMembersWithProfiles.find(m => m.user_id === batch.claimed_by);
-
+        const member = freshMembersWithProfiles?.find((m: any) => m.user_id === batch.claimed_by);
+        
         let deviceName = 'Unclaimed';
         let workingUserId = user.id;
-
+        
         if (batch.claimed_by) {
           workingUserId = batch.claimed_by;
           const isCurrentUser = batch.claimed_by === user.id;
-
+          
           if (isCurrentUser) {
             deviceName = 'You';
           } else if (batch.claimed_by_name) {
@@ -115,7 +212,7 @@ export default function Workflows({
             deviceName = 'Unknown User';
           }
         }
-
+        
         sessions.push({
           user_id: workingUserId,
           device_name: deviceName,
@@ -131,9 +228,9 @@ export default function Workflows({
 
     workflows?.forEach(workflow => {
       if (workflow.claimed_by && !sessions.find(s => s.current_workflow_id === workflow.id)) {
-        const member = freshMembersWithProfiles.find(m => m.user_id === workflow.claimed_by);
+        const member = freshMembersWithProfiles?.find((m: any) => m.user_id === workflow.claimed_by);
         const isCurrentUser = workflow.claimed_by === user.id;
-
+        
         sessions.push({
           user_id: workflow.claimed_by,
           device_name: workflow.claimed_by_name || (isCurrentUser ? 'You' : member?.profiles?.device_name || 'Unknown'),
@@ -144,29 +241,6 @@ export default function Workflows({
         });
       }
     });
-
-    freshMembersWithProfiles.forEach(member => {
-      if (!sessions.find(s => s.user_id === member.user_id)) {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const isOnline = member.last_active > fiveMinutesAgo;
-
-        sessions.push({
-          user_id: member.user_id,
-          device_name: member.profiles?.device_name || member.profiles?.email || 'Unknown',
-          last_heartbeat: member.last_active,
-          status: isOnline ? 'idle' : 'offline',
-        });
-      }
-    });
-
-    if (!sessions.find(s => s.user_id === user.id)) {
-      sessions.push({
-        user_id: user.id,
-        device_name: 'You',
-        last_heartbeat: new Date().toISOString(),
-        status: 'idle',
-      });
-    }
 
     setActiveSessions(sessions);
   }
@@ -189,15 +263,15 @@ export default function Workflows({
       await fetchBatches();
       await fetchWorkflows();
       await fetchActiveSessions();
-      alert('Batch claimed successfully!');
+      showToast('Batch claimed successfully!', 'success');
     } catch (error) {
       console.error('Error claiming batch:', error);
-      alert('Failed to claim batch');
+      showToast('Failed to claim batch', 'error');
     }
   }
 
   async function handleReleaseBatch(batchId: string) {
-    if (!confirm('Release this batch? It will become available for others to claim.')) {
+    if (!window.confirm('Release this batch? It will become available for others to claim.')) {
       return;
     }
 
@@ -216,10 +290,10 @@ export default function Workflows({
       await fetchBatches();
       await fetchWorkflows();
       await fetchActiveSessions();
-      alert('Batch released successfully!');
+      showToast('Batch released successfully!', 'success');
     } catch (error) {
       console.error('Error releasing batch:', error);
-      alert('Failed to release batch');
+      showToast('Failed to release batch', 'error');
     }
   }
 
@@ -244,15 +318,15 @@ export default function Workflows({
       await fetchWorkflows();
       await fetchActiveSessions();
       setAssignBatchModalOpen(false);
-      alert(`Batch assigned to ${deviceName}`);
+      showToast(`Batch assigned to ${deviceName}`, 'success');
     } catch (error) {
       console.error('Error assigning batch:', error);
-      alert('Failed to assign batch');
+      showToast('Failed to assign batch', 'error');
     }
   }
 
   async function handleCancelBatch(batchId: string) {
-    if (!confirm('Cancel this batch? All progress will be lost. This action cannot be undone.')) {
+    if (!window.confirm('Cancel this batch? All progress will be lost. This action cannot be undone.')) {
       return;
     }
 
@@ -267,10 +341,10 @@ export default function Workflows({
       await fetchBatches();
       await fetchWorkflows();
       await fetchActiveSessions();
-      alert('Batch canceled successfully');
+      showToast('Batch canceled successfully', 'success');
     } catch (error) {
       console.error('Error canceling batch:', error);
-      alert('Failed to cancel batch');
+      showToast('Failed to cancel batch', 'error');
     }
   }
 
@@ -284,7 +358,7 @@ export default function Workflows({
     try {
       const workflow = workflows.find(w => w.id === workflowId);
       if (!workflow) {
-        alert('Workflow not found');
+        showToast('Workflow not found', 'error');
         return;
       }
 
@@ -305,12 +379,12 @@ export default function Workflows({
 
       await fetchWorkflows();
       await fetchBatches();
-
+      
       setAssignWorkflowModalOpen(false);
-      alert(`Workflow "${workflow.name}" assigned to ${deviceName}`);
+      showToast(`Workflow "${workflow.name}" assigned to ${deviceName}`, 'success');
     } catch (error) {
       console.error('Error assigning workflow:', error);
-      alert('Failed to assign workflow');
+      showToast('Failed to assign workflow', 'error');
     }
   }
 
@@ -329,11 +403,11 @@ export default function Workflows({
 
       await fetchWorkflows();
       await fetchBatches();
-
-      alert('Workflow unassigned');
+      
+      showToast('Workflow unassigned', 'success');
     } catch (error) {
       console.error('Error unassigning workflow:', error);
-      alert('Failed to unassign workflow');
+      showToast('Failed to unassign workflow', 'error');
     }
   }
 
@@ -342,17 +416,17 @@ export default function Workflows({
     .filter(s => s.status === 'working' || (s.device_name === 'Unclaimed' && s.current_batch_id))
     .reduce((acc, session) => {
       let userBatches;
-
+      
       if (session.device_name === 'Unclaimed') {
-        userBatches = batches.filter(b =>
+        userBatches = batches.filter(b => 
           !b.claimed_by && !b.completed_at && b.id === session.current_batch_id
         );
       } else {
-        userBatches = batches.filter(b =>
+        userBatches = batches.filter(b => 
           b.claimed_by === session.user_id && !b.completed_at
         );
       }
-
+      
       if (userBatches.length > 0) {
         acc[session.device_name === 'Unclaimed' ? 'unclaimed' : session.user_id] = {
           session,
@@ -372,62 +446,58 @@ export default function Workflows({
       })),
   ];
 
+  function formatClockInTime(clockIn: string) {
+    const now = new Date();
+    const clockInDate = new Date(clockIn);
+    const diffMs = now.getTime() - clockInDate.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (diffHrs > 0) return `${diffHrs}h ${diffMins}m`;
+    return `${diffMins}m`;
+  }
+
   return (
     <>
-      {/* Real-Time Active Sessions */}
-      {isPremium && activeSessions.length > 0 && (
+      <ToastContainer toasts={toasts} />
+
+      {/* ─── TEAM STATUS (clock-in based) ─────────────────────────────── */}
+      {isPremium && clockedInMembers.length > 0 && (
         <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Team Status</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Team Status
+            <span className="ml-2 text-sm font-normal text-green-600">● {clockedInMembers.length} clocked in</span>
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeSessions.map((session, idx) => (
+            {clockedInMembers.map((member) => (
               <div
-                key={session.user_id + '-' + idx}
+                key={member.user_id}
                 className={`p-4 bg-gray-50 rounded-lg border-l-4 ${
-                  session.device_name === 'Unclaimed' ? 'border-orange-500' :
-                  session.status === 'working' ? 'border-green-500' :
-                  session.status === 'idle' ? 'border-yellow-500' : 'border-gray-400'
+                  member.current_batch_id ? 'border-green-500' : 'border-blue-400'
                 }`}
               >
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     <span className={`w-2 h-2 rounded-full ${
-                      session.device_name === 'Unclaimed' ? 'bg-orange-500' :
-                      session.status === 'working' ? 'bg-green-500 animate-pulse' :
-                      session.status === 'idle' ? 'bg-yellow-500' : 'bg-gray-400'
+                      member.current_batch_id ? 'bg-green-500 animate-pulse' : 'bg-blue-400'
                     }`}></span>
-                    {session.device_name}
+                    {member.device_name}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {session.device_name === 'Unclaimed' ? 'Unclaimed' :
-                     session.status === 'working' ? 'Working' :
-                     session.status === 'idle' ? '⏸ Idle' : 'Offline'}
+                    {member.current_batch_id ? 'Working' : 'Clocked In'}
                   </div>
                 </div>
 
-                {(session.status === 'working' || session.device_name === 'Unclaimed') && (
-                  <div className="mb-2">
-                    <div className={`text-sm font-medium mb-1 ${
-                      session.device_name === 'Unclaimed' ? 'text-orange-600' : 'text-blue-600'
-                    }`}>
-                      {session.current_workflow_name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Step {(session.current_step || 0) + 1}
-                    </div>
-                  </div>
-                )}
-
-                {session.status === 'idle' && session.current_workflow_name && session.device_name !== 'Unclaimed' && (
-                  <div className="mb-2">
-                    <div className="text-sm font-medium text-yellow-600 mb-1">
-                      Assigned: {session.current_workflow_name}
-                    </div>
-                    <div className="text-xs text-gray-500">Waiting to start</div>
+                {member.current_workflow_name && (
+                  <div className="text-sm text-blue-600 mb-1 truncate">
+                    {member.current_workflow_name}
+                    {member.current_step !== undefined && (
+                      <span className="text-gray-500"> • Step {member.current_step + 1}</span>
+                    )}
                   </div>
                 )}
 
                 <div className="text-xs text-gray-500">
-                  Last active: {new Date(session.last_heartbeat).toLocaleTimeString()}
+                  Clocked in {formatClockInTime(member.clock_in)} ago
                 </div>
               </div>
             ))}
@@ -439,10 +509,10 @@ export default function Workflows({
       {Object.keys(batchesByUser).length > 0 && (
         <div className="mb-6 space-y-6">
           <h2 className="text-xl font-semibold text-gray-900">Active Work Sessions</h2>
-
+          
           {Object.entries(batchesByUser).map(([userId, { session, batches: userBatches }]) => (
             <div key={userId} className={`bg-white/90 rounded-xl p-6 shadow-sm ${
-              session.device_name === 'Unclaimed' ? 'border-l-4 border-orange-500' : ''
+              session.device_name === 'Unclaimed' ? 'border-2 border-orange-300' : ''
             }`}>
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
                 <div className={`w-3 h-3 rounded-full ${
@@ -463,61 +533,40 @@ export default function Workflows({
               <div className="space-y-3">
                 {userBatches.map(batch => {
                   const workflow = workflows.find(w => w.id === batch.workflow_id);
-                  const progress = workflow?.steps
+                  const progress = workflow?.steps 
                     ? ((batch.current_step_index || 0) / workflow.steps.length) * 100
                     : 0;
                   const currentStep = batch.current_step_index || 0;
                   const totalSteps = workflow?.steps?.length || 0;
-
+            
                   return (
                     <div key={batch.id} className={`p-4 bg-gray-50 rounded-lg border-l-4 ${
-                      session.device_name === 'Unclaimed' ? 'border-orange-500' : 'border-green-500'
+                      session.device_name === 'Unclaimed' ? 'border-orange-400' : 'border-green-400'
                     }`}>
                       <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1">{batch.name}</div>
-                          <div className="text-sm text-gray-600 mb-2">
-                            Workflow: {workflow?.name || 'Unknown'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Started: {new Date(batch.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">
-                            Step {currentStep + 1}/{totalSteps}
-                          </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{batch.name}</div>
                           <div className="text-xs text-gray-500 mt-1">
-                            {Math.round(progress)}% complete
+                            Step {currentStep + 1}/{totalSteps}
+                            {workflow?.steps?.[currentStep]?.title && 
+                              ` — ${workflow.steps[currentStep].title}`}
                           </div>
                         </div>
                       </div>
 
-                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
-                        <div
-                          className={`h-full transition-all duration-300 ${
-                            session.device_name === 'Unclaimed' ? 'bg-orange-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${progress}%` }}
-                        ></div>
-                      </div>
-
-                      {workflow?.steps && workflow.steps[currentStep] && (
-                        <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-                          <div className="text-xs font-medium text-gray-700 mb-1">Current Step:</div>
-                          <div className="text-sm text-gray-900">
-                            {workflow.steps[currentStep].title || `Step ${currentStep + 1}`}
+                      {totalSteps > 0 && (
+                        <div className="mb-3">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className="bg-green-500 h-1.5 rounded-full transition-all"
+                              style={{ width: `${Math.min(100, progress)}%` }}
+                            />
                           </div>
-                          {workflow.steps[currentStep].description && (
-                            <div className="text-xs text-gray-600 mt-1">
-                              {workflow.steps[currentStep].description}
-                            </div>
-                          )}
                         </div>
                       )}
 
-                      <div className="mt-3 flex gap-2 flex-wrap">
-                        {session.device_name === 'Unclaimed' ? (
+                      <div className="flex gap-2 flex-wrap">
+                        {!batch.claimed_by ? (
                           <>
                             <button
                               onClick={() => handleClaimBatch(batch.id)}
@@ -580,7 +629,7 @@ export default function Workflows({
               onClick={() => setImportModalOpen(true)}
               className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors flex items-center gap-2"
             >
-              <span>🍽️</span>
+              <span>📥</span>
               Import Recipe
             </button>
             <Link href="/workflows/create" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -601,8 +650,8 @@ export default function Workflows({
               const isAssigned = !!workflow.claimed_by;
 
               return (
-                <div
-                  key={workflow.id}
+                <div 
+                  key={workflow.id} 
                   className={`p-5 bg-gray-50 rounded-lg border-l-4 flex justify-between items-center gap-4 flex-wrap ${
                     isActive ? 'border-green-500' : isAssigned ? 'border-blue-500' : 'border-gray-200'
                   }`}
@@ -634,13 +683,14 @@ export default function Workflows({
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Link
-                      href={`/workflows/edit?id=${workflow.id}`}
+                    <Link 
+                      href={`/workflows/edit?id=${workflow.id}`} 
                       className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                     >
                       View
                     </Link>
 
+                    {/* Assign/Release Workflow Buttons */}
                     {!isAssigned ? (
                       <button
                         onClick={() => {
@@ -672,19 +722,28 @@ export default function Workflows({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAssignWorkflowModalOpen(false)}>
           <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Assign Workflow</h3>
-            <p className="mb-4 text-gray-500">Select a team member to assign this workflow to:</p>
+            
+            <p className="mb-4 text-gray-500">
+              Select a team member to assign this workflow to:
+            </p>
+
             <select
               value=""
               onChange={(e) => {
-                if (e.target.value) handleAssignWorkflow(selectedWorkflowForAssignment, e.target.value);
+                if (e.target.value) {
+                  handleAssignWorkflow(selectedWorkflowForAssignment, e.target.value);
+                }
               }}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
               <option value="">Select team member</option>
               {assignableMembers.map(member => (
-                <option key={member.id} value={member.id}>{member.label}</option>
+                <option key={member.id} value={member.id}>
+                  {member.label}
+                </option>
               ))}
             </select>
+
             <div className="flex gap-2 mt-4">
               <button onClick={() => setAssignWorkflowModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
                 Cancel
@@ -699,19 +758,28 @@ export default function Workflows({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAssignBatchModalOpen(false)}>
           <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Assign Batch</h3>
-            <p className="mb-4 text-gray-500">Select a team member to assign this batch to:</p>
+            
+            <p className="mb-4 text-gray-500">
+              Select a team member to assign this batch to:
+            </p>
+
             <select
               value=""
               onChange={(e) => {
-                if (e.target.value) handleAssignBatch(selectedBatchForAssignment, e.target.value);
+                if (e.target.value) {
+                  handleAssignBatch(selectedBatchForAssignment, e.target.value);
+                }
               }}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
               <option value="">Select team member</option>
               {assignableMembers.map(member => (
-                <option key={member.id} value={member.id}>{member.label}</option>
+                <option key={member.id} value={member.id}>
+                  {member.label}
+                </option>
               ))}
             </select>
+
             <div className="flex gap-2 mt-4">
               <button onClick={() => setAssignBatchModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
                 Cancel
