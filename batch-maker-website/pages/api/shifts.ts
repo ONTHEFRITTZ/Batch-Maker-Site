@@ -13,7 +13,7 @@ async function getAuthUser(req: any): Promise<any> {
   const authHeader = req.headers?.authorization || '';
   const token = authHeader.replace('Bearer ', '');
   if (!token) throw new ApiError(401, 'Missing authorization token');
-  
+
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) throw new ApiError(401, 'Invalid or expired token');
   return user;
@@ -45,17 +45,17 @@ function wrapHandler(fn: (req: any, res: any) => Promise<void>) {
 
 export const createShift = wrapHandler(async (req: any, res: any) => {
   const user = await getAuthUser(req);
-  
+
   const { assigned_to, shift_date, start_time, end_time, role, notes } = req.body || {};
-  
+
   if (!assigned_to || !shift_date || !start_time || !end_time) {
     throw new ApiError(400, 'assigned_to, shift_date, start_time, and end_time are required');
   }
 
   // Verify the assigned user is in the owner's network
   const { data: member } = await supabase
-    .from('networks')
-    .select('*, profiles!inner(device_name, email)')
+    .from('network_member_roles')
+    .select('user_id')
     .eq('owner_id', user.id)
     .eq('user_id', assigned_to)
     .single();
@@ -64,7 +64,14 @@ export const createShift = wrapHandler(async (req: any, res: any) => {
     throw new ApiError(404, 'User not found in your network');
   }
 
-  const assigned_to_name = member.profiles?.device_name || member.profiles?.email || 'Unknown';
+  // Fetch profile separately to resolve display name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('device_name, email')
+    .eq('id', assigned_to)
+    .single();
+
+  const assigned_to_name = profile?.device_name || profile?.email || 'Unknown';
 
   const { data: shift, error } = await supabase
     .from('shifts')
@@ -140,17 +147,27 @@ export const updateShift = wrapHandler(async (req: any, res: any) => {
   const { assigned_to, shift_date, start_time, end_time, role, notes, status } = req.body || {};
 
   const updates: any = { updated_at: new Date().toISOString() };
+
   if (assigned_to !== undefined) {
     updates.assigned_to = assigned_to;
-    // Re-resolve name
+
+    // Verify membership then fetch profile separately to resolve name
     const { data: member } = await supabase
-      .from('networks')
-      .select('*, profiles!inner(device_name, email)')
+      .from('network_member_roles')
+      .select('user_id')
       .eq('owner_id', user.id)
       .eq('user_id', assigned_to)
       .single();
-    updates.assigned_to_name = member?.profiles?.device_name || member?.profiles?.email || 'Unknown';
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('device_name, email')
+      .eq('id', assigned_to)
+      .single();
+
+    updates.assigned_to_name = profile?.device_name || profile?.email || (member ? 'Unknown' : 'Unknown');
   }
+
   if (shift_date !== undefined) updates.shift_date = shift_date;
   if (start_time !== undefined) updates.start_time = start_time;
   if (end_time !== undefined) updates.end_time = end_time;

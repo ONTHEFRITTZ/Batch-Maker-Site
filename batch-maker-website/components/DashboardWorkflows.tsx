@@ -57,17 +57,18 @@ export default function Workflows({
 
   async function fetchActiveSessions() {
     if (!user) return;
-    
+
     const sessions: ActiveSession[] = [];
-    
+
     const { data: activeBatches } = await supabase
       .from('batches')
       .select('*')
       .eq('user_id', user.id)
       .is('completed_at', null)
       .order('updated_at', { ascending: false });
-const { data: freshMembers } = await supabase
-      .from('networks')
+
+    const { data: freshMembers } = await supabase
+      .from('network_member_roles')
       .select('*')
       .eq('owner_id', user.id);
 
@@ -93,15 +94,15 @@ const { data: freshMembers } = await supabase
     if (activeBatches) {
       for (const batch of activeBatches) {
         const workflow = workflows.find(w => w.id === batch.workflow_id);
-        const member = freshMembers?.find(m => m.user_id === batch.claimed_by);
-        
+        const member = freshMembersWithProfiles.find(m => m.user_id === batch.claimed_by);
+
         let deviceName = 'Unclaimed';
         let workingUserId = user.id;
-        
+
         if (batch.claimed_by) {
           workingUserId = batch.claimed_by;
           const isCurrentUser = batch.claimed_by === user.id;
-          
+
           if (isCurrentUser) {
             deviceName = 'You';
           } else if (batch.claimed_by_name) {
@@ -114,7 +115,7 @@ const { data: freshMembers } = await supabase
             deviceName = 'Unknown User';
           }
         }
-        
+
         sessions.push({
           user_id: workingUserId,
           device_name: deviceName,
@@ -130,9 +131,9 @@ const { data: freshMembers } = await supabase
 
     workflows?.forEach(workflow => {
       if (workflow.claimed_by && !sessions.find(s => s.current_workflow_id === workflow.id)) {
-        const member = freshMembers?.find(m => m.user_id === workflow.claimed_by);
+        const member = freshMembersWithProfiles.find(m => m.user_id === workflow.claimed_by);
         const isCurrentUser = workflow.claimed_by === user.id;
-        
+
         sessions.push({
           user_id: workflow.claimed_by,
           device_name: workflow.claimed_by_name || (isCurrentUser ? 'You' : member?.profiles?.device_name || 'Unknown'),
@@ -144,11 +145,11 @@ const { data: freshMembers } = await supabase
       }
     });
 
-    freshMembers?.forEach(member => {
+    freshMembersWithProfiles.forEach(member => {
       if (!sessions.find(s => s.user_id === member.user_id)) {
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         const isOnline = member.last_active > fiveMinutesAgo;
-        
+
         sessions.push({
           user_id: member.user_id,
           device_name: member.profiles?.device_name || member.profiles?.email || 'Unknown',
@@ -186,7 +187,7 @@ const { data: freshMembers } = await supabase
       if (error) throw error;
 
       await fetchBatches();
-      await fetchWorkflows(); // ADDED
+      await fetchWorkflows();
       await fetchActiveSessions();
       alert('Batch claimed successfully!');
     } catch (error) {
@@ -213,7 +214,7 @@ const { data: freshMembers } = await supabase
       if (error) throw error;
 
       await fetchBatches();
-      await fetchWorkflows(); // ADDED
+      await fetchWorkflows();
       await fetchActiveSessions();
       alert('Batch released successfully!');
     } catch (error) {
@@ -240,7 +241,7 @@ const { data: freshMembers } = await supabase
       if (error) throw error;
 
       await fetchBatches();
-      await fetchWorkflows(); // ADDED
+      await fetchWorkflows();
       await fetchActiveSessions();
       setAssignBatchModalOpen(false);
       alert(`Batch assigned to ${deviceName}`);
@@ -264,7 +265,7 @@ const { data: freshMembers } = await supabase
       if (error) throw error;
 
       await fetchBatches();
-      await fetchWorkflows(); // ADDED
+      await fetchWorkflows();
       await fetchActiveSessions();
       alert('Batch canceled successfully');
     } catch (error) {
@@ -274,7 +275,6 @@ const { data: freshMembers } = await supabase
   }
 
   function handleOpenBatch(batchId: string) {
-    // Navigate to batch execution page
     router.push(`/batch-execution?id=${batchId}`);
   }
 
@@ -305,7 +305,7 @@ const { data: freshMembers } = await supabase
 
       await fetchWorkflows();
       await fetchBatches();
-      
+
       setAssignWorkflowModalOpen(false);
       alert(`Workflow "${workflow.name}" assigned to ${deviceName}`);
     } catch (error) {
@@ -329,7 +329,7 @@ const { data: freshMembers } = await supabase
 
       await fetchWorkflows();
       await fetchBatches();
-      
+
       alert('Workflow unassigned');
     } catch (error) {
       console.error('Error unassigning workflow:', error);
@@ -342,17 +342,17 @@ const { data: freshMembers } = await supabase
     .filter(s => s.status === 'working' || (s.device_name === 'Unclaimed' && s.current_batch_id))
     .reduce((acc, session) => {
       let userBatches;
-      
+
       if (session.device_name === 'Unclaimed') {
-        userBatches = batches.filter(b => 
+        userBatches = batches.filter(b =>
           !b.claimed_by && !b.completed_at && b.id === session.current_batch_id
         );
       } else {
-        userBatches = batches.filter(b => 
+        userBatches = batches.filter(b =>
           b.claimed_by === session.user_id && !b.completed_at
         );
       }
-      
+
       if (userBatches.length > 0) {
         acc[session.device_name === 'Unclaimed' ? 'unclaimed' : session.user_id] = {
           session,
@@ -380,8 +380,8 @@ const { data: freshMembers } = await supabase
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Team Status</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeSessions.map((session, idx) => (
-              <div 
-                key={session.user_id + '-' + idx} 
+              <div
+                key={session.user_id + '-' + idx}
                 className={`p-4 bg-gray-50 rounded-lg border-l-4 ${
                   session.device_name === 'Unclaimed' ? 'border-orange-500' :
                   session.status === 'working' ? 'border-green-500' :
@@ -400,7 +400,7 @@ const { data: freshMembers } = await supabase
                   <div className="text-xs text-gray-500">
                     {session.device_name === 'Unclaimed' ? 'Unclaimed' :
                      session.status === 'working' ? 'Working' :
-                     session.status === 'idle' ? '⏸Idle' : 'Offline'}
+                     session.status === 'idle' ? '⏸ Idle' : 'Offline'}
                   </div>
                 </div>
 
@@ -422,9 +422,7 @@ const { data: freshMembers } = await supabase
                     <div className="text-sm font-medium text-yellow-600 mb-1">
                       Assigned: {session.current_workflow_name}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      Waiting to start
-                    </div>
+                    <div className="text-xs text-gray-500">Waiting to start</div>
                   </div>
                 )}
 
@@ -441,7 +439,7 @@ const { data: freshMembers } = await supabase
       {Object.keys(batchesByUser).length > 0 && (
         <div className="mb-6 space-y-6">
           <h2 className="text-xl font-semibold text-gray-900">Active Work Sessions</h2>
-          
+
           {Object.entries(batchesByUser).map(([userId, { session, batches: userBatches }]) => (
             <div key={userId} className={`bg-white/90 rounded-xl p-6 shadow-sm ${
               session.device_name === 'Unclaimed' ? 'border-l-4 border-orange-500' : ''
@@ -465,12 +463,12 @@ const { data: freshMembers } = await supabase
               <div className="space-y-3">
                 {userBatches.map(batch => {
                   const workflow = workflows.find(w => w.id === batch.workflow_id);
-                  const progress = workflow?.steps 
+                  const progress = workflow?.steps
                     ? ((batch.current_step_index || 0) / workflow.steps.length) * 100
                     : 0;
                   const currentStep = batch.current_step_index || 0;
                   const totalSteps = workflow?.steps?.length || 0;
-            
+
                   return (
                     <div key={batch.id} className={`p-4 bg-gray-50 rounded-lg border-l-4 ${
                       session.device_name === 'Unclaimed' ? 'border-orange-500' : 'border-green-500'
@@ -496,7 +494,7 @@ const { data: freshMembers } = await supabase
                       </div>
 
                       <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
-                        <div 
+                        <div
                           className={`h-full transition-all duration-300 ${
                             session.device_name === 'Unclaimed' ? 'bg-orange-500' : 'bg-green-500'
                           }`}
@@ -518,7 +516,6 @@ const { data: freshMembers } = await supabase
                         </div>
                       )}
 
-                      {/* Batch Action Buttons */}
                       <div className="mt-3 flex gap-2 flex-wrap">
                         {session.device_name === 'Unclaimed' ? (
                           <>
@@ -583,7 +580,7 @@ const { data: freshMembers } = await supabase
               onClick={() => setImportModalOpen(true)}
               className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors flex items-center gap-2"
             >
-              <span></span>
+              <span>🍽️</span>
               Import Recipe
             </button>
             <Link href="/workflows/create" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -604,8 +601,8 @@ const { data: freshMembers } = await supabase
               const isAssigned = !!workflow.claimed_by;
 
               return (
-                <div 
-                  key={workflow.id} 
+                <div
+                  key={workflow.id}
                   className={`p-5 bg-gray-50 rounded-lg border-l-4 flex justify-between items-center gap-4 flex-wrap ${
                     isActive ? 'border-green-500' : isAssigned ? 'border-blue-500' : 'border-gray-200'
                   }`}
@@ -637,14 +634,13 @@ const { data: freshMembers } = await supabase
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Link 
-                      href={`/workflows/edit?id=${workflow.id}`} 
+                    <Link
+                      href={`/workflows/edit?id=${workflow.id}`}
                       className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                     >
                       View
                     </Link>
 
-                    {/* Assign/Release Workflow Buttons */}
                     {!isAssigned ? (
                       <button
                         onClick={() => {
@@ -676,28 +672,19 @@ const { data: freshMembers } = await supabase
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAssignWorkflowModalOpen(false)}>
           <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Assign Workflow</h3>
-            
-            <p className="mb-4 text-gray-500">
-              Select a team member to assign this workflow to:
-            </p>
-
+            <p className="mb-4 text-gray-500">Select a team member to assign this workflow to:</p>
             <select
               value=""
               onChange={(e) => {
-                if (e.target.value) {
-                  handleAssignWorkflow(selectedWorkflowForAssignment, e.target.value);
-                }
+                if (e.target.value) handleAssignWorkflow(selectedWorkflowForAssignment, e.target.value);
               }}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
               <option value="">Select team member</option>
               {assignableMembers.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.label}
-                </option>
+                <option key={member.id} value={member.id}>{member.label}</option>
               ))}
             </select>
-
             <div className="flex gap-2 mt-4">
               <button onClick={() => setAssignWorkflowModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
                 Cancel
@@ -712,28 +699,19 @@ const { data: freshMembers } = await supabase
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAssignBatchModalOpen(false)}>
           <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Assign Batch</h3>
-            
-            <p className="mb-4 text-gray-500">
-              Select a team member to assign this batch to:
-            </p>
-
+            <p className="mb-4 text-gray-500">Select a team member to assign this batch to:</p>
             <select
               value=""
               onChange={(e) => {
-                if (e.target.value) {
-                  handleAssignBatch(selectedBatchForAssignment, e.target.value);
-                }
+                if (e.target.value) handleAssignBatch(selectedBatchForAssignment, e.target.value);
               }}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             >
               <option value="">Select team member</option>
               {assignableMembers.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.label}
-                </option>
+                <option key={member.id} value={member.id}>{member.label}</option>
               ))}
             </select>
-
             <div className="flex gap-2 mt-4">
               <button onClick={() => setAssignBatchModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
                 Cancel

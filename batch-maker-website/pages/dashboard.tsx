@@ -131,9 +131,9 @@ export default function EnhancedDashboard() {
         return;
       }
 
-      // Fetch network members for premium/admin/trial users
+      // Fetch network members using correct table name
       const { data: membersData } = await supabase
-        .from('networks')
+        .from('network_member_roles')
         .select('*')
         .eq('owner_id', userId);
 
@@ -320,7 +320,7 @@ export default function EnhancedDashboard() {
     );
   }
 
-  // ── Single source of truth for this render ──────────────────
+  // Single source of truth for this render
   const isPremium = hasDashboardAccess(profile);
   const tierLabel = getTierLabel(profile);
 
