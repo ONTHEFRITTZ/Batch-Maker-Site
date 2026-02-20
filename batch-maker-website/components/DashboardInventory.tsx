@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import type { DashboardProps, InventoryItem } from '../lib/dashboard-types';
 import { getSupabaseClient } from '../lib/supabase';
-
 const supabase = getSupabaseClient();
-
 // ─── Inline toast (replaces alert() to prevent React re-render wipes) ──────
 type ToastType = 'success' | 'error' | 'info';
 interface Toast { id: number; message: string; type: ToastType; }
 let toastCounter = 0;
-
 function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const showToast = (message: string, type: ToastType = 'success') => {
@@ -18,7 +15,6 @@ function useToast() {
   };
   return { toasts, showToast };
 }
-
 function ToastContainer({ toasts }: { toasts: Toast[] }) {
   if (toasts.length === 0) return null;
   return (
@@ -27,14 +23,13 @@ function ToastContainer({ toasts }: { toasts: Toast[] }) {
         <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
           t.type === 'success' ? 'bg-green-600' : t.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
         }`}>
-          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'ℹ '}{t.message}
+          {t.type === 'success' ? '✓ ' : t.type === 'error' ? '✗ ' : 'i '}{t.message}
         </div>
       ))}
     </div>
   );
 }
 // ────────────────────────────────────────────────────────────────────────────
-
 export default function Inventory({
   user,
   inventoryItems,
@@ -45,7 +40,6 @@ export default function Inventory({
   fetchShoppingList,
 }: DashboardProps) {
   const { toasts, showToast } = useToast();
-
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addInventoryModalOpen, setAddInventoryModalOpen] = useState(false);
@@ -53,7 +47,6 @@ export default function Inventory({
   const [transactionType, setTransactionType] = useState<'add' | 'use'>('use');
   const [addShoppingItemModalOpen, setAddShoppingItemModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
   const [inventoryFormData, setInventoryFormData] = useState({
     name: '',
     quantity: 0,
@@ -64,13 +57,11 @@ export default function Inventory({
     category: '',
     notes: '',
   });
-
   const [bulkTransactionData, setBulkTransactionData] = useState({
     quantity: 0,
     cost: 0,
     notes: '',
   });
-
   const [shoppingFormData, setShoppingFormData] = useState({
     item_name: '',
     quantity: 0,
@@ -80,21 +71,17 @@ export default function Inventory({
     supplier: '',
     notes: '',
   });
-
   const lowStockItems = inventoryItems.filter(item =>
     item.low_stock_threshold && item.quantity <= item.low_stock_threshold
   );
-
   const totalInventoryValue = inventoryItems.reduce((sum, item) =>
     sum + (item.quantity * (item.cost_per_unit || 0)), 0
   );
-
   const filteredItems = inventoryItems.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.supplier?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   const toggleItemSelection = (itemId: string) => {
     const newSelection = new Set(selectedItems);
     if (newSelection.has(itemId)) {
@@ -104,7 +91,6 @@ export default function Inventory({
     }
     setSelectedItems(newSelection);
   };
-
   const selectAll = () => {
     if (selectedItems.size === filteredItems.length) {
       setSelectedItems(new Set());
@@ -112,7 +98,6 @@ export default function Inventory({
       setSelectedItems(new Set(filteredItems.map(item => item.id)));
     }
   };
-
   const getStockStatus = (item: InventoryItem) => {
     if (!item.low_stock_threshold) return { label: 'OK', color: 'bg-gray-100 text-gray-600' };
     if (item.quantity === 0) return { label: 'Out', color: 'bg-red-100 text-red-700' };
@@ -120,13 +105,11 @@ export default function Inventory({
     if (item.quantity <= item.low_stock_threshold) return { label: 'Low', color: 'bg-yellow-100 text-yellow-700' };
     return { label: 'OK', color: 'bg-green-100 text-green-700' };
   };
-
   async function handleAddInventoryItem() {
     if (!inventoryFormData.name || inventoryFormData.quantity <= 0) {
       showToast('Please fill in required fields', 'error');
       return;
     }
-
     try {
       const { error } = await supabase.from('inventory_items').insert({
         user_id: user.id,
@@ -134,9 +117,7 @@ export default function Inventory({
         last_updated: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
-
       if (error) throw error;
-
       await fetchInventoryItems();
       setAddInventoryModalOpen(false);
       setInventoryFormData({
@@ -149,10 +130,8 @@ export default function Inventory({
       showToast('Failed to add inventory item', 'error');
     }
   }
-
   async function handleUpdateInventoryItem() {
     if (!editingItem) return;
-
     try {
       const { error } = await supabase
         .from('inventory_items')
@@ -168,9 +147,7 @@ export default function Inventory({
           last_updated: new Date().toISOString(),
         })
         .eq('id', editingItem.id);
-
       if (error) throw error;
-
       await fetchInventoryItems();
       setEditingItem(null);
       showToast('Item updated successfully!', 'success');
@@ -179,25 +156,21 @@ export default function Inventory({
       showToast('Failed to update item', 'error');
     }
   }
-
   async function handleBulkTransaction() {
     if (selectedItems.size === 0 || bulkTransactionData.quantity <= 0) {
       showToast('Please select items and enter quantity', 'error');
       return;
     }
-
     try {
       for (const itemId of Array.from(selectedItems)) {
         const item = inventoryItems.find(i => i.id === itemId);
         if (!item) continue;
-
         let newQuantity = item.quantity;
         if (transactionType === 'use') {
           newQuantity -= bulkTransactionData.quantity;
         } else {
           newQuantity += bulkTransactionData.quantity;
         }
-
         await supabase.from('inventory_transactions').insert({
           user_id: user.id,
           item_id: itemId,
@@ -208,7 +181,6 @@ export default function Inventory({
           created_by: user.email,
           created_at: new Date().toISOString(),
         });
-
         await supabase
           .from('inventory_items')
           .update({
@@ -217,7 +189,6 @@ export default function Inventory({
           })
           .eq('id', itemId);
       }
-
       await fetchInventoryItems();
       await fetchInventoryTransactions();
       setBulkTransactionModalOpen(false);
@@ -229,13 +200,11 @@ export default function Inventory({
       showToast('Failed to record transaction', 'error');
     }
   }
-
   async function handleAddShoppingItem() {
     if (!shoppingFormData.item_name || shoppingFormData.quantity <= 0) {
       showToast('Please fill in required fields', 'error');
       return;
     }
-
     try {
       const { error } = await supabase.from('shopping_list').insert({
         user_id: user.id,
@@ -244,9 +213,7 @@ export default function Inventory({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-
       if (error) throw error;
-
       await fetchShoppingList();
       setAddShoppingItemModalOpen(false);
       setShoppingFormData({
@@ -259,27 +226,21 @@ export default function Inventory({
       showToast('Failed to add shopping item', 'error');
     }
   }
-
   async function updateShoppingItemStatus(id: string, status: 'pending' | 'ordered' | 'received') {
     try {
       const { error: updateError } = await supabase
         .from('shopping_list')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', id);
-
       if (updateError) throw updateError;
-
       if (status === 'received') {
         const shoppingItem = shoppingList.find(item => item.id === id);
         if (!shoppingItem) return;
-
         const existingItem = inventoryItems.find(
           item => item.name.toLowerCase() === shoppingItem.item_name.toLowerCase()
         );
-
         if (existingItem) {
           const newQuantity = existingItem.quantity + shoppingItem.quantity;
-
           await supabase
             .from('inventory_items')
             .update({
@@ -287,7 +248,6 @@ export default function Inventory({
               last_updated: new Date().toISOString()
             })
             .eq('id', existingItem.id);
-
           await supabase.from('inventory_transactions').insert({
             user_id: user.id,
             item_id: existingItem.id,
@@ -318,7 +278,6 @@ export default function Inventory({
             })
             .select()
             .single();
-
           if (newItem) {
             await supabase.from('inventory_transactions').insert({
               user_id: user.id,
@@ -332,18 +291,15 @@ export default function Inventory({
             });
           }
         }
-
         await fetchInventoryItems();
         await fetchInventoryTransactions();
       }
-
       await fetchShoppingList();
     } catch (error) {
       console.error('Error updating shopping item:', error);
       showToast('Failed to update shopping item status', 'error');
     }
   }
-
   return (
     <>
       {/* Inventory Management */}
@@ -360,7 +316,6 @@ export default function Inventory({
             />
           </div>
         </div>
-
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="p-4 bg-gray-50 rounded-lg text-center">
@@ -376,7 +331,6 @@ export default function Inventory({
             <div className="text-2xl font-bold text-red-500">{lowStockItems.length}</div>
           </div>
         </div>
-
         {/* Action Bar */}
         <div className="flex gap-3 mb-4 pb-4 border-b border-gray-200">
           <button
@@ -422,7 +376,6 @@ export default function Inventory({
             + New Item
           </button>
         </div>
-
         {/* Compact List */}
         {inventoryItems.length === 0 ? (
           <p className="text-gray-400 text-sm italic text-center py-8">No inventory items yet. Add items to start tracking!</p>
@@ -442,11 +395,9 @@ export default function Inventory({
               <div className="w-32 text-right">Quantity</div>
               <div className="w-24 text-center">Status</div>
             </div>
-
             {filteredItems.map(item => {
               const status = getStockStatus(item);
               const isSelected = selectedItems.has(item.id);
-
               return (
                 <div
                   key={item.id}
@@ -496,7 +447,6 @@ export default function Inventory({
           </div>
         )}
       </div>
-
       {/* Shopping List */}
       <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
@@ -505,7 +455,6 @@ export default function Inventory({
             + Add Item
           </button>
         </div>
-
         {shoppingList.length === 0 ? (
           <p className="text-gray-400 text-sm italic text-center py-8">Order list is empty.</p>
         ) : (
@@ -531,7 +480,6 @@ export default function Inventory({
                 ))}
               </div>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">📦 Ordered</h3>
               <div className="space-y-3">
@@ -546,7 +494,6 @@ export default function Inventory({
                 ))}
               </div>
             </div>
-
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">✅ Received</h3>
               <div className="space-y-3">
@@ -562,7 +509,6 @@ export default function Inventory({
           </div>
         )}
       </div>
-
       {/* Recent Transactions */}
       <div className="bg-white/90 rounded-xl p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
@@ -594,13 +540,11 @@ export default function Inventory({
           </div>
         )}
       </div>
-
       {/* Edit Item Modal */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingItem(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setEditingItem(null)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Edit Item</h3>
-
             <input
               type="text"
               placeholder="Item name"
@@ -608,7 +552,6 @@ export default function Inventory({
               onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <div className="flex gap-2 mb-4">
               <input
                 type="number"
@@ -625,7 +568,6 @@ export default function Inventory({
                 className="flex-1 p-3 border border-gray-300 rounded-lg"
               />
             </div>
-
             <input
               type="number"
               placeholder="Low stock threshold"
@@ -633,7 +575,6 @@ export default function Inventory({
               onChange={(e) => setEditingItem({...editingItem, low_stock_threshold: parseFloat(e.target.value) || 0})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="number"
               placeholder="Cost per unit"
@@ -641,7 +582,6 @@ export default function Inventory({
               onChange={(e) => setEditingItem({...editingItem, cost_per_unit: parseFloat(e.target.value) || 0})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="text"
               placeholder="Supplier"
@@ -649,7 +589,6 @@ export default function Inventory({
               onChange={(e) => setEditingItem({...editingItem, supplier: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="text"
               placeholder="Category"
@@ -657,14 +596,12 @@ export default function Inventory({
               onChange={(e) => setEditingItem({...editingItem, category: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <textarea
               placeholder="Notes"
               value={editingItem.notes || ''}
               onChange={(e) => setEditingItem({...editingItem, notes: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[80px]"
             />
-
             <div className="flex gap-2">
               <button onClick={handleUpdateInventoryItem} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
                 Save Changes
@@ -676,15 +613,13 @@ export default function Inventory({
           </div>
         </div>
       )}
-
       {/* Bulk Transaction Modal */}
       {bulkTransactionModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setBulkTransactionModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setBulkTransactionModalOpen(false)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">
               {transactionType === 'add' ? '➕ Add Stock' : '➖ Use Stock'}
             </h3>
-
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <div className="text-sm font-medium text-gray-900 mb-1">Selected Items ({selectedItems.size}):</div>
               <div className="text-xs text-gray-600">
@@ -694,7 +629,6 @@ export default function Inventory({
                 }).join(', ')}
               </div>
             </div>
-
             <input
               type="number"
               step="0.01"
@@ -703,7 +637,6 @@ export default function Inventory({
               onChange={(e) => setBulkTransactionData({...bulkTransactionData, quantity: parseFloat(e.target.value) || 0})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="number"
               step="0.01"
@@ -712,14 +645,12 @@ export default function Inventory({
               onChange={(e) => setBulkTransactionData({...bulkTransactionData, cost: parseFloat(e.target.value) || 0})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <textarea
               placeholder="Notes"
               value={bulkTransactionData.notes}
               onChange={(e) => setBulkTransactionData({...bulkTransactionData, notes: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[80px]"
             />
-
             <div className="flex gap-2">
               <button onClick={handleBulkTransaction} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
                 Record Transaction
@@ -731,13 +662,11 @@ export default function Inventory({
           </div>
         </div>
       )}
-
       {/* Add Inventory Item Modal */}
       {addInventoryModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAddInventoryModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setAddInventoryModalOpen(false)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add Inventory Item</h3>
-
             <input
               type="text"
               placeholder="Item name *"
@@ -745,7 +674,6 @@ export default function Inventory({
               onChange={(e) => setInventoryFormData({...inventoryFormData, name: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <div className="flex gap-2 mb-4">
               <input
                 type="number"
@@ -762,7 +690,6 @@ export default function Inventory({
                 className="flex-1 p-3 border border-gray-300 rounded-lg"
               />
             </div>
-
             <div className="flex gap-2 mb-4">
               <input
                 type="number"
@@ -779,7 +706,6 @@ export default function Inventory({
                 className="flex-1 p-3 border border-gray-300 rounded-lg"
               />
             </div>
-
             <input
               type="text"
               placeholder="Supplier"
@@ -787,7 +713,6 @@ export default function Inventory({
               onChange={(e) => setInventoryFormData({...inventoryFormData, supplier: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="text"
               placeholder="Category"
@@ -795,14 +720,12 @@ export default function Inventory({
               onChange={(e) => setInventoryFormData({...inventoryFormData, category: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <textarea
               placeholder="Notes"
               value={inventoryFormData.notes}
               onChange={(e) => setInventoryFormData({...inventoryFormData, notes: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[80px]"
             />
-
             <div className="flex gap-2">
               <button onClick={handleAddInventoryItem} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
                 Add Item
@@ -814,13 +737,11 @@ export default function Inventory({
           </div>
         </div>
       )}
-
       {/* Add Shopping List Item Modal */}
       {addShoppingItemModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAddShoppingItemModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setAddShoppingItemModalOpen(false)}>
           <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add to Order List</h3>
-
             <input
               type="text"
               placeholder="Item name *"
@@ -828,7 +749,6 @@ export default function Inventory({
               onChange={(e) => setShoppingFormData({...shoppingFormData, item_name: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <div className="flex gap-2 mb-4">
               <input
                 type="number"
@@ -845,7 +765,6 @@ export default function Inventory({
                 className="flex-1 p-3 border border-gray-300 rounded-lg"
               />
             </div>
-
             <select
               value={shoppingFormData.priority}
               onChange={(e) => setShoppingFormData({...shoppingFormData, priority: e.target.value as any})}
@@ -856,7 +775,6 @@ export default function Inventory({
               <option value="urgent">Urgent</option>
               <option value="low">Low Priority</option>
             </select>
-
             <input
               type="number"
               placeholder="Estimated cost"
@@ -864,7 +782,6 @@ export default function Inventory({
               onChange={(e) => setShoppingFormData({...shoppingFormData, estimated_cost: parseFloat(e.target.value) || 0})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <input
               type="text"
               placeholder="Supplier"
@@ -872,14 +789,12 @@ export default function Inventory({
               onChange={(e) => setShoppingFormData({...shoppingFormData, supplier: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4"
             />
-
             <textarea
               placeholder="Notes"
               value={shoppingFormData.notes}
               onChange={(e) => setShoppingFormData({...shoppingFormData, notes: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[80px]"
             />
-
             <div className="flex gap-2">
               <button onClick={handleAddShoppingItem} className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
                 Add Item
@@ -891,7 +806,6 @@ export default function Inventory({
           </div>
         </div>
       )}
-
       <ToastContainer toasts={toasts} />
     </>
   );
