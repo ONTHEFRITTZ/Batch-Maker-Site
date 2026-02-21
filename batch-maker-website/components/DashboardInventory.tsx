@@ -540,10 +540,11 @@ export default function Inventory({
           </div>
         )}
       </div>
+
       {/* Edit Item Modal */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setEditingItem(null)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ position: 'relative', zIndex: 100000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Edit Item</h3>
             <input
               type="text"
@@ -613,10 +614,11 @@ export default function Inventory({
           </div>
         </div>
       )}
+
       {/* Bulk Transaction Modal */}
       {bulkTransactionModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setBulkTransactionModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-8 max-w-md w-full" style={{ position: 'relative', zIndex: 100000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">
               {transactionType === 'add' ? '➕ Add Stock' : '➖ Use Stock'}
             </h3>
@@ -662,10 +664,11 @@ export default function Inventory({
           </div>
         </div>
       )}
+
       {/* Add Inventory Item Modal */}
       {addInventoryModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setAddInventoryModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ position: 'relative', zIndex: 100000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add Inventory Item</h3>
             <input
               type="text"
@@ -737,10 +740,11 @@ export default function Inventory({
           </div>
         </div>
       )}
+
       {/* Add Shopping List Item Modal */}
       {addShoppingItemModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setAddShoppingItemModalOpen(false)}>
-          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ position: 'relative', zIndex: 100000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Add to Order List</h3>
             <input
               type="text"

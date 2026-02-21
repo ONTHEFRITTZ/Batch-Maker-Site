@@ -591,7 +591,7 @@ export default function Calendar({
       {/* ── Schedule Batch Modal ── */}
       {scheduleModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setScheduleModalOpen(false)}>
-          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ position: 'relative', zIndex: 100000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Schedule Batch</h3>
 
             <select

@@ -512,7 +512,7 @@ export default function DashboardSchedule({ user, networkMembers, isPremium }: D
       {/* Create Shift Modal */}
       {createShiftModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }} onClick={() => setCreateShiftModalOpen(false)}>
-          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white/90 rounded-xl p-8 max-w-md w-full" style={{ position: 'relative', zIndex: 100000 }} onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Create Shift</h3>
 
             <select value={shiftFormData.assigned_to} onChange={e => setShiftFormData({ ...shiftFormData, assigned_to: e.target.value })} className="w-full p-3 border border-gray-300 rounded-lg mb-4">

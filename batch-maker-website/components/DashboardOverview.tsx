@@ -245,12 +245,12 @@ export default function Overview({
         </p>
         {showingAllLocations && (
           <p className="text-sm text-blue-600 mt-2">
-            📍 Viewing aggregate stats across all {locations.length} locations
+            Viewing aggregate stats across all {locations.length} locations
           </p>
         )}
         {selectedLocation && (
           <p className="text-sm text-blue-600 mt-2">
-            📍 Currently viewing: {selectedLocation.name}
+            Currently viewing: {selectedLocation.name}
           </p>
         )}
       </div>
@@ -260,7 +260,7 @@ export default function Overview({
         <Link href="/dashboard?view=workflows" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600">Active Batches</h3>
-            <span className="text-2xl">🔄</span>
+            <span className="text-2xl"></span>
           </div>
           <div className="text-3xl font-bold text-gray-900 mb-1">{activeBatches.length}</div>
           <div className="text-xs text-blue-600">View workflows →</div>
@@ -278,31 +278,31 @@ export default function Overview({
         <Link href="/dashboard?view=calendar" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-purple-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600">Scheduled Today</h3>
-            <span className="text-2xl">📅</span>
+            <span className="text-2xl"></span>
           </div>
           <div className="text-3xl font-bold text-gray-900 mb-1">{scheduledToday.length}</div>
-          <div className="text-xs text-purple-600">View calendar →</div>
+          <div className="text-xs text-cyan-600">View calendar →</div>
         </Link>
 
         {isPremium ? (
           <Link href="/dashboard?view=schedule" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-orange-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-600">Team Online</h3>
-              <span className="text-2xl">👥</span>
+              <span className="text-2xl"></span>
             </div>
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {teamMembersOnline.length}/{networkMembers.length}
             </div>
-            <div className="text-xs text-orange-600">Manage team →</div>
+            <div className="text-xs text-cyan-600">Manage team →</div>
           </Link>
         ) : (
           <Link href="/upgrade" className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-yellow-500 bg-gradient-to-br from-yellow-50 to-orange-50 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-600">Upgrade</h3>
-              <span className="text-2xl">⭐</span>
+              <span className="text-2xl"></span>
             </div>
             <div className="text-sm font-semibold text-gray-900 mb-1">Go Premium</div>
-            <div className="text-xs text-yellow-700">Unlock team features →</div>
+            <div className="text-xs text-cyan-700">Unlock team features →</div>
           </Link>
         )}
       </div>
@@ -311,7 +311,7 @@ export default function Overview({
       {showingAllLocations && locationStats.length > 0 && (
         <div className="glass-card rounded-xl p-6 shadow-sm mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <span>📊</span>
+            <span></span>
             Location Performance Comparison (Last 30 Days)
           </h2>
 
@@ -320,7 +320,7 @@ export default function Overview({
               <div key={stat.location.id} className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-lg text-gray-900">
-                    📍 {stat.location.name}
+                    {stat.location.name}
                   </h3>
                   {stat.location.is_default && (
                     <span className="text-xs px-2 py-1 bg-blue-500 text-white rounded-full font-medium">
@@ -353,7 +353,7 @@ export default function Overview({
                 {stat.lowStockCount > 0 && (
                   <div className="bg-red-100 border border-red-300 rounded-lg p-2 text-center">
                     <span className="text-sm text-red-700 font-medium">
-                      ⚠️ {stat.lowStockCount} low stock item{stat.lowStockCount !== 1 ? 's' : ''}
+                      {stat.lowStockCount} low stock item{stat.lowStockCount !== 1 ? 's' : ''}
                     </span>
                   </div>
                 )}
@@ -365,7 +365,7 @@ export default function Overview({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Top Performer (Revenue)</div>
-                <div className="text-sm font-bold text-blue-600">
+                <div className="text-sm font-bold text-cyan-600">
                   {locationStats.reduce((max, stat) =>
                     stat.totalRevenue > max.totalRevenue ? stat : max
                   ).location.name}
@@ -373,7 +373,7 @@ export default function Overview({
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Most Productive</div>
-                <div className="text-sm font-bold text-green-600">
+                <div className="text-sm font-bold text-cyan-600">
                   {locationStats.reduce((max, stat) =>
                     stat.batchesCompleted > max.batchesCompleted ? stat : max
                   ).location.name}
@@ -381,7 +381,7 @@ export default function Overview({
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Highest Profit</div>
-                <div className="text-sm font-bold text-purple-600">
+                <div className="text-sm font-bold text-cyan-600">
                   {locationStats.reduce((max, stat) =>
                     stat.profit > max.profit ? stat : max
                   ).location.name}
@@ -389,7 +389,7 @@ export default function Overview({
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">Largest Inventory</div>
-                <div className="text-sm font-bold text-orange-600">
+                <div className="text-sm font-bold text-cyan-600">
                   {locationStats.reduce((max, stat) =>
                     stat.inventoryValue > max.inventoryValue ? stat : max
                   ).location.name}
@@ -404,7 +404,7 @@ export default function Overview({
       {(lowStockItems.length > 0 || urgentShoppingItems.length > 0) && (
         <div className="glass-card rounded-xl p-6 shadow-sm border-l-4 border-red-500 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="text-xl">⚠️</span>
+            <span className="text-xl"></span>
             Alerts & Notifications
           </h3>
           <div className="space-y-2">
@@ -457,7 +457,7 @@ export default function Overview({
               href="/workflows/create"
               className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
             >
-              <span className="text-3xl mb-2">➕</span>
+              <span className="text-3xl mb-2"></span>
               <span className="text-sm font-medium text-gray-700 text-center">New Workflow</span>
             </Link>
 
@@ -465,7 +465,7 @@ export default function Overview({
               href="/dashboard?view=calendar"
               className="flex flex-col items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
             >
-              <span className="text-3xl mb-2">📅</span>
+              <span className="text-3xl mb-2"></span>
               <span className="text-sm font-medium text-gray-700 text-center">Schedule Batch</span>
             </Link>
 
@@ -473,7 +473,7 @@ export default function Overview({
               href="/dashboard?view=inventory"
               className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
             >
-              <span className="text-3xl mb-2">📦</span>
+              <span className="text-3xl mb-2"></span>
               <span className="text-sm font-medium text-gray-700 text-center">Check Inventory</span>
             </Link>
 
@@ -483,7 +483,7 @@ export default function Overview({
                   href="/dashboard?view=schedule"
                   className="flex flex-col items-center justify-center p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                 >
-                  <span className="text-3xl mb-2">👥</span>
+                  <span className="text-3xl mb-2"></span>
                   <span className="text-sm font-medium text-gray-700 text-center">Manage Team</span>
                 </Link>
 
@@ -491,7 +491,7 @@ export default function Overview({
                   href="/settings"
                   className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <span className="text-3xl mb-2">⚙️</span>
+                  <span className="text-3xl mb-2"></span>
                   <span className="text-sm font-medium text-gray-700 text-center">Team Settings</span>
                 </Link>
               </>
@@ -501,7 +501,7 @@ export default function Overview({
               href="/dashboard?view=analytics"
               className="flex flex-col items-center justify-center p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
             >
-              <span className="text-3xl mb-2">📊</span>
+              <span className="text-3xl mb-2"></span>
               <span className="text-sm font-medium text-gray-700 text-center">View Analytics</span>
             </Link>
           </div>
