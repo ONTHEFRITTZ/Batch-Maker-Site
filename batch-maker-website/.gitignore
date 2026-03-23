@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+.expo/
+.vercel/
+
+# Environment
+.env.local
+.env*.local
+
+# Builds
+batch-maker-website/.next/
+batch-maker-app/android/build/
+batch-maker-app/ios/build/
+.env
+.env.local
+.env.production
+.env.development.local
+*.jks
