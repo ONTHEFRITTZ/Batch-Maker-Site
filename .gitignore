@@ -1,3 +1,4 @@
+
 # Dependencies
 node_modules/
 .expo/
@@ -11,4 +12,29 @@ node_modules/
 batch-maker-website/.next/
 batch-maker-app/android/build/
 batch-maker-app/ios/build/
-.vercel
+.env
+.env.local
+.env.production
+.env.development.local
+*.jks
+
+
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+*.p8
+*.mobileprovision
+GoogleService-Info.plist
+google-services.json
+secrets/
+.DS_Store
+Thumbs.db

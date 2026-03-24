@@ -1,2 +1,13 @@
 .vercel
+.env
+.env.local
+.env.production
+.env.development
 .env*.local
+*.pem
+*.p12
+*.p8
+*.pfx
+*.jks
+*.keystore
+secrets/
